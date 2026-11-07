@@ -1,0 +1,16 @@
+# Python environments and generated files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local data and secrets
+data/raw/
+.env
+
+# macOS
+.DS_Store

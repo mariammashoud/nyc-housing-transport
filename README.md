@@ -32,13 +32,29 @@ docs/        prompts.md and other documentation
 - all column names: lowercase_with_underscores
 
 ## Setup
+Install Python 3.10 or newer, then create an isolated environment from the repository root.
+
+**macOS / Linux**
 ```bash
-git clone <repo-url>
-cd nyc-housing-transport
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-jupyter notebook          # open the notebooks
-python app/app.py         # run the website locally (after Member 5 adds it)
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+jupyter lab
+```
+
+**Windows PowerShell**
+```powershell
+py -3 -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+jupyter lab
+```
+
+In VS Code, choose the `.venv` interpreter and the matching notebook kernel. Re-run `python -m pip install -r requirements.txt` after pulling changes to the dependency file. To run the website once `app/app.py` exists:
+```bash
+python app/app.py
 ```
 
 ## Deployment
