@@ -10,8 +10,17 @@ An AI assistant (Claude) was used to help write and debug the code in this secti
 - Build the notebook for the T4 dataset covering all project requirements: dataset overview, EDA, pre-integration cleaning (missing values, duplicates, inconsistencies, formats, outliers), validation, ZIP x year aggregation, and 2 research questions.
 - Fix this error from the API download: `KeyError: No column contains ('collision',)`.
 
-## Member 1 - Housing dataset
-_(add prompts here)_
+## Member 1 - Housing dataset (DOB NOW: Build – Job Application Filings, H5)
+An AI assistant was used to help write, debug, and refine the code and analysis in this section; all outputs were executed and verified by the author.
+
+- Compare the candidate housing datasets (H1–H5) and justify why DOB NOW: Build – Job Application Filings (H5, `w9ak-ipjd`) best fits our study. (selected H5 because it records citywide construction filings with coordinates, costs, and existing vs. proposed dwelling units)
+- Run EDA on the 2022–2025 H5 extract (`data/raw/w9ak-ipjd.csv`, 598,706 rows × 34 columns) covering types, missingness against the 60% threshold, descriptive statistics, and duplicates. (verified only 5 columns exceed 60% missingness—`apt_condo_no_s` at 99.2% and four `built_*` fields at 89.8%—while `special_inspection_agency_number` at 37.7% and `work_on_floor` at 9.2% are kept)
+- Audit the raw owner `zip` column against `borough` and use `assign_building_zip` (`assign_zip_from_sirta.py`) to assign a 5-digit building `zip_code` from coordinates. (confirmed a 63.7% borough mismatch on raw `zip`; assigned building ZIPs to 98.6% of filings within 0.01° and noted the ~9–10% boundary error)
+- Update domain checks 4a–4d so blank (`NaN`) heights, stories, and units on interior or plumbing jobs are kept rather than dropped. (Check 4a removes 0 rows, Check 4b removes 633 impossible height/story rows, Check 4c removes 0 rows, and Check 4d removes 24 borough-prefix mismatches)
+- Fix the Tier-1 typo rules to match `"1 Family"`, `"2 Family"`, `"3 Family"` for the > $25M cost check, add a rule removing rows with existing or proposed units > 10,000, and print counts per rule. (removed 52 rows total: 10 from cost, 20 from low-rise > 500 units, and 22 from the > 10,000 unit cap)
+- Replace the raw-scale Tukey fence in Tier 2 with a log-scale IQR rule (`log1p`) so normal renovations are not flagged as outliers while large developments remain flagged and kept. (reduced flagged filings from 32.9% to 2.0%, or 11,820 filings)
+- Compute `proposed_units_total`, `existing_units_total`, and `net_new_units` in the `zip_code × year` aggregation from one `-I1` filing per job instead of summing across amendments, keeping `filing_count` and output columns unchanged. (verified `housing_clean.csv` has 736 rows = 184 ZIPs × 4 years and plausible yearly `net_new_units` of 54k–101k)
+- Update the markdown text and research question findings in `Member1_Housing.ipynb` to match the 598,706-row outputs without causal claims, and write outputs only to the root `data/clean/` folder. (updated RQ1 to $r = 0.38$ across 701 cells and RQ2 with the true yearly trajectory and top 5 dual-hotspot ZIPs)
 
 ## Member 3 - Integration
 An AI assistant (Claude) was used to help write and debug the code in this section; the results were run and reviewed by the author.
