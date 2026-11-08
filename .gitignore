@@ -14,3 +14,5 @@ data/raw/
 
 # macOS
 .DS_Store
+data/clean/housing_clean_row_level.csv
+HANDOFF_member3.md
