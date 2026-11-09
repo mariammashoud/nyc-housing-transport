@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: nyc-housing-transport
+    runtime: python
+    plan: free
+    buildCommand: pip install -r app/requirements.txt
+    startCommand: gunicorn app.app:server --bind 0.0.0.0:$PORT --workers 1 --threads 2 --timeout 120 --access-logfile -
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10

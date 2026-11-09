@@ -54,7 +54,15 @@ An AI assistant (Claude) was used to help write and debug the code in this secti
 The final notebook was assembled with AI assistance during the correction pass below. Individual Member 4 approval/name must still be confirmed.
 
 ## Member 5 - Website and deployment
-_(add prompts here)_
+An AI assistant using Copilot SDK in VS Code assisted with implementation after the user approved the scope. Original team members should review the result before submission.
+
+- "now i want to start impleminting my part but tell me what you will exactly do before you begain" - supplied a plan covering Dash controls/search, Generate Report, five chart types, two additional research questions, CSV download, tests and Render preparation.
+- "what stack will you use" - selected Python, Dash, Plotly, Pandas, CSS, unittest and Gunicorn/Render; no database or separate JavaScript application.
+- "will you use colab ?" - clarified local VS Code/Jupyter development, optional Colab for notebooks, and Render for hosting.
+- "will you deploy it or i need to do thing" - clarified that account authorization, plan/billing approval and public deployment require the user; no passwords/tokens should be shared.
+- "ok start in a new branch starting from the last branch" - created `feat/member-5-dashboard` from `fix/member-4` and implemented the approved local work. No automatic commit, push or public deployment.
+
+Implementation: strict validated search, explicit applied-report state, four dropdowns, five Plotly chart types, coverage-aware totals/story, per-session CSV download, responsive CSS, shared annual benchmark calculations, two executed research charts, regression/HTTP tests, minimal web requirements and Render configuration. Search/filter errors remain visible; unknown housing and zero denominators are not disguised as zero. Benchmark ties and map omissions are disclosed. Public deployment/second-device live checks remain pending authorization.
 
 ## Cross-member correction pass requested by Member 5
 An AI assistant using Copilot SDK in VS Code assisted with this work. The original contributors should review the changes before submission. No claim is made that they authored or approved this correction pass.

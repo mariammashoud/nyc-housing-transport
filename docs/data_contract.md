@@ -83,4 +83,11 @@ All source count/unit totals must reconcile through the merge. Ratios must never
 ## Reproduction and final notebook
 Run `python notebooks/run_notebooks.py` from the repository root, then `python -m unittest discover -s tests -v`.
 
-[Member 4's final notebook](../notebooks/Member4_Story_and_Final.ipynb) consolidates the full preparation/integration pipeline, all Members 1-4 research questions, and Member 4's two additional charts and synthesis. It runs top to bottom. Member 5 website/deployment is intentionally deferred.
+[Member 4's final notebook](../notebooks/Member4_Story_and_Final.ipynb) consolidates the full preparation/integration pipeline, all Members 1-4 research questions, and Member 4's two additional charts and synthesis. It runs top to bottom. [Member 5's research notebook](../notebooks/Member5_Website_Research.ipynb) adds two questions/charts using the same calculations as the Dash dashboard. Public deployment remains pending.
+
+## Member 5 read-only dashboard
+The website reads the integrated CSV without changing it. It supports non-negative filing/serious-crash/injury/fatality counts; reported unit totals are deliberately not offered as completed-housing metrics.
+
+Each year's benchmark population is all housing-covered NYC ZIP-years, before visitor filters. Housing activity groups use annual quartile cutoffs; high activity requires a positive value at/above the 75th percentile. Ties stay together and all-zero measures have no high group. Joint-high flags require both selected measures to be high. Multi-year concentration uses ZIP-years, not distinct people or a risk denominator.
+
+Filtered downloads include the original columns plus `housing_quartile`, `housing_high`, `transport_high`, and `joint_high`. These additional fields describe the selected metric pair, not the fixed source schema. Unknown housing retains missing benchmark flags. No new integrated source file is written. Map-only exclusions are disclosed without changing other counts.

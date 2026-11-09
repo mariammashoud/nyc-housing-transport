@@ -1,23 +1,40 @@
 # Member 5 - Website and deployment
 
-## Inputs
-`data/clean/integrated_dataset.csv` (use dummy data with the same columns until it is ready).
+## Deliverables
+- [Dash application](../../app/app.py), shared [data/research logic](../../app/data.py), [Plotly charts](../../app/charts.py), and responsive [CSS](../../app/assets/style.css).
+- [Member5_Website_Research.ipynb](../../notebooks/Member5_Website_Research.ipynb): two executed research questions/charts with calculated findings and limitations.
+- [Render blueprint](../../render.yaml) and minimal [web dependencies](../../app/requirements.txt).
+- [Tests](../../tests/test_dashboard.py), [setup/deployment guide](../../README.md), and [prompt log](../../docs/prompts.md).
 
-## Output files
-- `app/` (Dash app: `app.py`, assets)
-- Live deployment link, `requirements.txt`, README setup/deployment section
+## Implemented
+- [x] Multiple dropdowns: boroughs, years, housing and transportation measures.
+- [x] Dropdown/search modes, with supported ZIP/borough/year/measure phrases and explicit invalid-input feedback.
+- [x] Generate Report updates all five charts, cards, findings and coverage notices together.
+- [x] Unapplied-selection notice; reset restores the default report.
+- [x] CSV download uses only the last applied selection and preserves missing values/source/benchmark flags.
+- [x] Scatter, grouped bars, aligned lines, heatmap and map; hover/zoom and PNG chart export.
+- [x] Housing/transportation relationship chart and a clear story/limitations/NYC relevance section.
+- [x] Responsive desktop/mobile layout, keyboard focus styles, labels and live status/error notices.
+- [x] Tests for business logic, exact thresholds, missingness, state isolation, Dash HTTP callbacks and downloads.
+- [x] Two research questions/visualizations shared between notebook and website.
+- [x] Render configuration, dependency pins, README instructions, contribution and AI prompt documentation.
+- [ ] Public Render deployment (requires user's GitHub/Render authorization and pushed code).
+- [ ] Test the public HTTPS link on another device and add the verified URL to the README.
 
-## Checklist
-- [ ] **Multiple dropdown filters** (Borough, Year, a housing category, a transport category)
-- [ ] **Search mode** (e.g. "Brooklyn 2022 new buildings" applies filters)
-- [ ] **Generate Report button** that updates ALL charts from the selected filters/search
-- [ ] Variety of charts: bar, line, heatmap, map, scatter; hover/zoom/filter interactivity
-- [ ] At least one chart showing the **relationship between housing and transportation**
-- [ ] Story section: question, key findings, limitations, benefit to NYC (text from Member 4)
-- [ ] Consistent, user-friendly layout; everything responds in real time
-- [ ] Deploy on a free platform (Render/Vercel), test the live link on another device
-- [ ] README: setup steps, deployment steps, short description of each member's contribution
-- [ ] 2 research questions + 2 visualizations
-- [ ] Prompts + contribution line
+## Run locally (repository root)
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r app\requirements.txt
+.\.venv\Scripts\python.exe -m app.app
+```
+Open http://127.0.0.1:8050/. Stop with `Ctrl+C`. Use Python 3.12; no raw downloads or notebook execution are required to run the web app.
 
-**Deadline:** skeleton on dummy data by Sunday, real data connected Sunday night, deployed Monday morning.
+## Research questions
+1. What share of recorded serious crashes falls in the highest-filing activity group? Grouped bars compare event share with the share of selected housing-covered ZIP-years.
+2. Which ZIPs repeatedly meet both high-filing and high-crash thresholds? A ZIP/year heatmap shows recurring co-occurrence.
+
+Thresholds are positive values at/above the annual NYC-wide 75th percentile, computed before user filters. Ties are retained, so "high" need not mean exactly 25%. Unknown housing is excluded only from paired-domain research, not erased from dashboard totals/downloads. A recurring ZIP is jointly high in at least two selected years. Metric dropdowns generalize the same comparisons to other supported event counts.
+
+## Coverage and deployment cautions
+Applications are not completed homes; crashes are serious/fatal SIRTA records, not all collisions or individual risk. Preserve unknowns and source flags. Coordinate-less ZIPs remain in non-map outputs; basemap tiles require internet. Do not infer causation from co-occurrence.
+
+Render's Linux/Gunicorn production startup and public second-device checks must be verified after authorized deployment. No credentials should be added to code or prompts. No commit/push/deployment is performed automatically.
