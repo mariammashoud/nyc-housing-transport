@@ -2,6 +2,9 @@
 
 Every prompt used in the project (AI or otherwise) is listed here, per member, with the step it supported.
 
+## Website follow-up
+- "there should be 10 research questions appears" - display the eight Members 1-4 questions alongside Member 5's two, numbered RQ1-RQ10, with applied-selection charts and regression tests.
+
 ## Member 2 - Transportation dataset (SIRTA, T4)
 An AI assistant (Claude) was used to help write and debug the code in this section; the results were run and reviewed by the author.
 

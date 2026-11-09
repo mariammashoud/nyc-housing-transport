@@ -55,6 +55,7 @@ class Report:
     concentration: pd.DataFrame
     recurrence: pd.DataFrame
     coverage: dict
+    crash_covered_zips: frozenset[str]
 
 
 def load_dataset(path=DATA_PATH):
@@ -62,6 +63,8 @@ def load_dataset(path=DATA_PATH):
     required = {
         "zip_code", "year", "borough", "has_housing_data", "has_crash_data",
         "zip_latitude", "zip_longitude", "official_zip_filings", "approximate_zip_filings",
+        "net_new_units", "unique_job_count", "jobs_with_known_units",
+        "night_crash_count", "crashes_with_known_time",
         *HOUSING_METRICS, *TRANSPORT_METRICS,
     }
     missing = required - set(frame.columns)
@@ -79,13 +82,20 @@ def load_dataset(path=DATA_PATH):
     for flag in ["has_housing_data", "has_crash_data"]:
         if not pd.api.types.is_bool_dtype(frame[flag]) or frame[flag].isna().any():
             raise ValueError(f"{flag} must contain explicit True/False values.")
-    numeric = [*HOUSING_METRICS, *TRANSPORT_METRICS, "official_zip_filings", "approximate_zip_filings"]
+    numeric = [*HOUSING_METRICS, *TRANSPORT_METRICS, "official_zip_filings", "approximate_zip_filings",
+               "unique_job_count", "jobs_with_known_units", "night_crash_count", "crashes_with_known_time"]
     for column in numeric:
         if not pd.api.types.is_numeric_dtype(frame[column]):
             raise ValueError(f"{column} must be numeric.")
         values = frame[column].dropna()
         if not np.isfinite(values).all() or (values < 0).any() or values.mod(1).ne(0).any():
             raise ValueError(f"{column} must contain finite, non-negative whole counts.")
+    units = frame["net_new_units"]
+    if not pd.api.types.is_numeric_dtype(units):
+        raise ValueError("net_new_units must be numeric.")
+    known_units = units.dropna()
+    if not np.isfinite(known_units).all() or known_units.mod(1).ne(0).any():
+        raise ValueError("net_new_units must contain finite whole counts or missing values.")
     known = frame["has_housing_data"]
     if frame.loc[known, list(HOUSING_METRICS)].isna().any().any():
         raise ValueError("Housing-covered rows have unknown required filing counts.")
@@ -286,7 +296,8 @@ def build_report(frame, selection):
         "missing_map_zips": sorted(rows.loc[~located, "zip_code"].unique().tolist()),
         "known_housing_rows": len(known),
     }
-    return Report(selection, rows, totals, concentration, recurrence, coverage)
+    crash_covered_zips = frozenset(frame.loc[frame["has_crash_data"], "zip_code"])
+    return Report(selection, rows, totals, concentration, recurrence, coverage, crash_covered_zips)
 
 
 def report_csv(report):

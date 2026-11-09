@@ -58,14 +58,14 @@ def render_report(report, fingerprint):
             html.Span("Known reports only" if metric == "filing_count" else "In this selection", className="stat-caption"),
         ], className="stat-card"))
     high_share = report.concentration.loc["Q4 / highest", "event_share"]
-    q1_finding = (
+    concentration_finding = (
         "Event share is undefined: there are no selected events with known housing coverage."
         if high_share != high_share else
         f"The highest housing-activity group contains {high_share:.1%} of selected "
         f"{TRANSPORT_METRICS[selection.transport_metric].lower()} with known housing coverage."
     )
     recurring = int(report.recurrence["joint_years"].ge(2).sum())
-    q2_finding = (
+    recurrence_finding = (
         "Select at least two years to assess recurrence."
         if len(selection.years) < 2 else
         f"{recurring} ZIPs meet both high-activity thresholds in at least two selected years."
@@ -82,6 +82,9 @@ def render_report(report, fingerprint):
         f"In this selection, the pooled descriptive correlation is {paired[selection.housing_metric].corr(paired[selection.transport_metric]):.2f}."
         if varied else "This selection has too little variation for a meaningful correlation."
     )
+    unit_rows = report.rows[report.rows["has_housing_data"]]
+    known_jobs = int(unit_rows["jobs_with_known_units"].sum())
+    total_jobs = int(unit_rows["unique_job_count"].sum())
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     return [
         html.Div([
@@ -99,21 +102,83 @@ def render_report(report, fingerprint):
             f"{coverage['approximate_zip_filings']:,} housing filings use approximate ZIP assignment. "
             "Unknown housing is never replaced with zero.",
         ], className="coverage-note", id="coverage-notice"),
+        html.Section([
+            html.Div([
+                html.Div([html.Span("THE TEAM'S RESEARCH", className="eyebrow"),
+                          html.H2("10 research questions")]),
+                html.P("Members 1-5 / two questions each. All charts use the applied borough, year and ZIP scope. "
+                       "Measure dropdowns generalize the comparisons except reported units (RQ1) and serious injuries (RQ3)."),
+            ], className="report-heading"),
+            html.Div([
+                graph_card("RQ1 / Reported unit change",
+                           "How does reported net unit change among first-observed jobs vary by borough and cohort year?",
+                           figures["net-units"], "net-units-chart",
+                           children=[html.P(f"{known_jobs:,} of {total_jobs:,} first-observed jobs have complete unit pairs. "
+                                            "Partial reported totals are not completed homes; blank cells remain unknown.",
+                                            className="chart-footnote")]),
+                graph_card("RQ2 / Housing and transportation",
+                           "Are ZIP-years with more housing activity also those with more recorded transportation events?",
+                           figures["relationship"], "relationship-chart",
+                           children=[html.P(association, className="finding"),
+                                     html.P("One point per ZIP-year. Defaults reproduce the filing/serious-crash question. "
+                                            "Repeated ZIP-years are not independent; association is not causation.",
+                                            className="chart-footnote")]),
+                graph_card("RQ3 / Serious injuries",
+                           "Across ZIP-years, how is housing activity associated with the number of people seriously injured in recorded crashes?",
+                           figures["severe-injuries"], "severe-injuries-chart",
+                           children=[html.P("The injury outcome stays fixed regardless of the transportation dropdown. "
+                                            "Counts describe recorded events, not individual risk.", className="chart-footnote")]),
+                graph_card("RQ4 / Nighttime crashes",
+                           "Does the observed nighttime crash share differ across housing-activity groups within each borough?",
+                           figures["nighttime"], "nighttime-chart",
+                           children=[html.P("Nighttime = 00:00-05:59 and 22:00-23:59. Shares use summed nighttime crashes / "
+                                            "summed known-time crashes, never averages of ZIP percentages. "
+                                            "Blank cells have no usable denominator. " + BENCHMARK_NOTE,
+                                            className="chart-footnote")]),
+                graph_card("RQ5 / Changes within ZIPs",
+                           "Did ZIPs whose housing activity grew most also see a larger change in recorded transportation events?",
+                           figures["changes"], "changes-chart",
+                           children=[html.P("Last minus first selected year, using known housing at both endpoints. "
+                                            "ZIPs never present in the full snapshot's crash source are excluded. "
+                                            "Defaults compare filings and serious crashes in 2022 and 2025.",
+                                            className="chart-footnote")]),
+                graph_card("RQ6 / A one-year lag",
+                           "Is a ZIP's housing activity in one year associated with its recorded transportation events in the following year?",
+                           figures["lagged"], "lagged-chart",
+                           children=[html.P("Only exact consecutive-year pairs inside the applied selection are used, in crash-source ZIPs. "
+                                            "The second view subtracts each ZIP's own paired-year mean; a single pair gives zero deviations. "
+                                            "These descriptive comparisons cannot establish causation.",
+                                            className="chart-footnote")]),
+                graph_card("RQ7 / Borough shares",
+                           "Do the boroughs accounting for the most housing activity also account for the most recorded transportation activity?",
+                           figures["borough-shares"], "borough-shares-chart",
+                           children=[html.P("Each measure uses its own selected total. Unknown housing is excluded from that total, "
+                                            "not replaced with zero. Zero-total shares are undefined.",
+                                            className="chart-footnote")]),
+                graph_card("RQ8 / Consistent-panel trends",
+                           "How have housing and transportation activity changed relative to the first selected year within a consistent ZIP panel?",
+                           figures["indexed-trend"], "indexed-trend-chart",
+                           children=[html.P("Only ZIPs with known housing in every selected year are included. "
+                                            "Both measures use the same ZIP panel; the first selected year equals 100. "
+                                            "Defaults reproduce the 2022 baseline.", className="chart-footnote")]),
+                graph_card("RQ9 / Concentration",
+                           "How much of the selected transportation activity falls in the highest housing-activity group?",
+                           figures["concentration"], "concentration-chart",
+                           children=[html.P(concentration_finding, className="finding", id="concentration-finding"),
+                                     html.P(BENCHMARK_NOTE, className="chart-footnote")]),
+                graph_card("RQ10 / Recurring high activity",
+                           "Which ZIPs repeatedly meet both citywide annual high-activity thresholds?",
+                           figures["recurrence"], "recurrence-chart",
+                           children=[html.P(recurrence_finding, className="finding", id="recurrence-finding"),
+                                     html.P("Up to 20 ZIPs, ordered by high-activity years, then housing total and ZIP. "
+                                            "Pale = not both high; blank = unknown/no row. " + BENCHMARK_NOTE,
+                                            className="chart-footnote")]),
+            ], className="charts-grid"),
+        ], id="research-questions"),
+        html.Div([html.H2("Explore the context")], className="report-heading"),
         html.Div([
-            graph_card("Two domains, one view", "Compare selected measures. Each point is a ZIP-year; association is not causation.",
-                       figures["relationship"], "relationship-chart", wide=True),
-            graph_card("RQ1 / Concentration", "How much of the selected transportation activity falls in the highest housing-activity group?",
-                       figures["concentration"], "concentration-chart",
-                       children=[html.P(q1_finding, className="finding", id="concentration-finding"),
-                                 html.P(BENCHMARK_NOTE, className="chart-footnote")]),
             graph_card("The changing city", "Independent count axes, aligned years. Missing housing totals stay unknown.",
                        figures["trend"], "trend-chart"),
-            graph_card("RQ2 / Recurring high activity", "Which ZIPs repeatedly meet both citywide annual high-activity thresholds?",
-                       figures["recurrence"], "recurrence-chart",
-                       children=[html.P(q2_finding, className="finding", id="recurrence-finding"),
-                                 html.P("Up to 20 ZIPs, ordered by high-activity years, then housing total and ZIP. "
-                                        "Pale = not both high; blank = unknown/no row. " + BENCHMARK_NOTE,
-                                        className="chart-footnote")]),
             graph_card("Put the selection on the map", "One descriptive source-mean point per ZIP, not a ZIP boundary. Size = transportation; color = housing.",
                        figures["map"], "map-chart",
                        children=[html.P(map_note, className="chart-footnote", id="map-coverage"),
@@ -172,7 +237,8 @@ def create_app(data_path=DATA_PATH):
             html.Header([
                 html.A([html.Span("NYC", className="brand-mark"), html.Span("CITY / SIGNAL", className="brand-name")],
                        href="#top", className="brand"),
-                html.Div([html.A("Explore", href="#report-panel"), html.A("The story", href="#story"),
+                html.Div([html.A("Explore", href="#report-panel"),
+                          html.A("Research questions", href="#research-questions"), html.A("The story", href="#story"),
                           html.Span("2022 - 2025", className="period-tag")], className="nav-links"),
             ], className="topbar", id="top"),
             html.Section([

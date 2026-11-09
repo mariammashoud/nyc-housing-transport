@@ -17,7 +17,7 @@ Both sources are aggregated to **ZIP code x year**, then outer-joined. Housing u
 ## Start here
 - [Final notebook: Members 1-4](notebooks/Member4_Story_and_Final.ipynb) contains the complete pipeline, eight research questions with charts, calculated findings, limitations and NYC relevance.
 - Individual notebooks: [Housing](notebooks/Member1_Housing.ipynb), [Transportation](notebooks/Member2_Transportation_SIRTA.ipynb), [Integration](notebooks/Member3_Integration.ipynb).
-- [Member 5 research](notebooks/Member5_Website_Research.ipynb) adds two questions/charts on concentration and recurring high activity, using the same functions as the dashboard.
+- [Member 5 research](notebooks/Member5_Website_Research.ipynb) adds two questions/charts on concentration and recurring high activity, using the same functions as the dashboard. The website displays all ten team questions as RQ1-RQ10.
 - [Cleaned datasets](data/clean/) feed the future website.
 - [Member 5 dashboard and checklist](members/member5_website/README.md): local website implemented; public deployment and a second-device live check remain pending.
 
@@ -75,7 +75,7 @@ The original notebooks have been corrected/assembled with AI assistance at the u
 | Member 2 - Mariam | Transportation | SIRTA EDA/cleaning, validation, weighted nighttime-share inputs, two completed cross-domain questions/charts |
 | Member 3 - Aya Sweed | Integration | Join justification, outer merge, post-join cleaning, derived measures, total reconciliation, two questions/charts |
 | Member 4 - name to confirm | Story/final notebook | Consolidated pipeline, two additional questions/charts, calculated findings, limitations and NYC impact |
-| Member 5 - name to confirm | Website/deployment | Dash filters/search, atomic Generate Report, five interactive chart types, story/coverage notices, CSV download, two additional research questions/charts, tests and Render configuration; public deployment pending |
+| Member 5 - name to confirm | Website/deployment | Dash filters/search, atomic Generate Report, all ten team research questions with interactive charts, story/coverage notices, CSV download, two additional research questions/charts, tests and Render configuration; public deployment pending |
 
 ## Website / deployment
 
@@ -101,12 +101,23 @@ Open **http://127.0.0.1:8050/**. Stop with `Ctrl+C`. On macOS/Linux use `python 
 
 Search is a strict, documented parser, not general natural-language AI. It accepts known ZIPs, boroughs, years and measure keywords. Named fields override dropdowns; unspecified fields retain the dropdown selections. Unsupported text, conflicting measures, empty filters and empty results produce a visible error, clear the active report and disable downloading. Queries are limited to 160 characters.
 
-### Charts and Member 5 research
-- Scatter: selected housing versus transportation measure, one point per ZIP-year.
-- Grouped bars (RQ1): transportation event concentration across annual housing-activity groups, compared with each group's share of selected ZIP-years.
-- Aligned lines: yearly totals on independent, labelled count axes (no dual-axis comparison).
-- Heatmap (RQ2): ZIPs repeatedly meeting both high-activity thresholds, up to 20 shown.
-- Map: descriptive source-mean ZIP points; size encodes transportation and color encodes housing. Gray marks unknown housing.
+### Ten research questions
+The website shows all ten questions, with one interactive chart per question, in team order:
+
+1. **RQ1 / Member 1:** reported net unit change by borough and first-observed job year (diverging heatmap).
+2. **RQ2 / Member 1:** housing activity and recorded transportation events by ZIP-year (scatter).
+3. **RQ3 / Member 2:** housing activity and people seriously injured (scatter).
+4. **RQ4 / Member 2:** nighttime crash share by borough and housing-activity group (weighted-share heatmap).
+5. **RQ5 / Member 3:** within-ZIP changes between the first and last selected years (scatter).
+6. **RQ6 / Member 3:** housing activity and following-year transportation events, pooled and within-ZIP views (two-panel scatter).
+7. **RQ7 / Member 4:** borough shares of housing and transportation activity (grouped bars).
+8. **RQ8 / Member 4:** indexed trends using a consistent, housing-covered ZIP panel (lines).
+9. **RQ9 / Member 5:** transportation concentration across annual housing-activity groups (grouped bars).
+10. **RQ10 / Member 5:** recurring jointly high activity, up to 20 ZIPs (heatmap).
+
+All questions follow the applied borough/year/ZIP scope. Measure dropdowns generalize the original filing/crash comparisons; RQ1 always uses reported units, and RQ3 always uses serious injuries. RQ4 uses the dashboard's fixed annual NYC activity groups rather than re-ranking pooled selected ZIP-years; it divides summed nighttime counts by summed known-time crash counts. RQ5 excludes ZIPs without housing at both selected endpoints. RQ5/RQ6 exclude ZIPs never present in the full snapshot's crash source. RQ6 only pairs exact consecutive years within the selection; RQ8 uses ZIPs with housing coverage in every selected year and indexes to the first selected year. Missing coverage, insufficient years and undefined denominators produce explicit chart notices, not fabricated zeros; all ten question headings remain visible.
+
+Two supplementary context charts remain available: yearly totals on independent count axes, and a map of descriptive source-mean ZIP points. Map size encodes transportation and color encodes housing; gray marks unknown housing.
 
 Annual benchmarks use all NYC housing-covered ZIPs **before filters**. High activity means a positive value at/above the year's 75th percentile; tied values stay together, so the high group is not necessarily exactly 25%. Unknown housing is excluded from paired-domain research, not turned into zero. Multi-year bar denominators count ZIP-years, not distinct residents. A recurring ZIP is jointly high in at least two selected years.
 
@@ -118,9 +129,9 @@ Coverage notices distinguish unknown housing, structural crash zeros and approxi
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
-Dashboard tests cover filtering, search, exact percentile/tie handling, zero denominators, missingness, per-report isolation, all nine measure combinations, actual Dash HTTP callbacks, reset, last-applied downloads and the two executed research charts. Existing data-pipeline checks remain included.
+Dashboard tests cover all ten question headings on initial, filtered, sparse and reset reports; all twelve chart containers; weighted nighttime denominators; endpoint/lag matching; consistent-panel indexing; filtering, search, exact percentile/tie handling, missingness, state isolation, all nine measure combinations, actual Dash HTTP callbacks, downloads and the two executed Member 5 notebook charts. Existing data-pipeline checks remain included.
 
-Local verification: **40 tests passed**, dependency checks passed, and desktop (1440px)/mobile (390px) browser checks showed no horizontal overflow. Search, dropdowns, reset, missing-data notices, map tiles and the generated CSV were checked. Explicit graph container heights prevent responsive charts collapsing on mobile.
+Latest dashboard verification: **31 dashboard tests passed**. Desktop (1440px) and mobile (390px) page loads displayed all ten questions without horizontal overflow. Browser search and reset retained all ten question cards; callback tests also covered missing-data selections and CSV downloads. Explicit graph container heights prevent charts collapsing on mobile.
 
 ### Deploy on Render (account authorization required)
 **Status: configuration ready; no public deployment or live URL has been created.**

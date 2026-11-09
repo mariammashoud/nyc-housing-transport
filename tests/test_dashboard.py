@@ -16,6 +16,22 @@ from app.data import (
     selection_from_store,
 )
 
+RESEARCH_GRAPHS = [
+    "net-units", "relationship", "severe-injuries", "nighttime", "changes",
+    "lagged", "borough-shares", "indexed-trend", "concentration", "recurrence",
+]
+
+
+def component_nodes(node):
+    if isinstance(node, dict):
+        if "type" in node and "props" in node:
+            yield node
+        for value in node.values():
+            yield from component_nodes(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from component_nodes(item)
+
 
 class DashboardDataTests(unittest.TestCase):
     @classmethod
@@ -94,7 +110,7 @@ class DashboardDataTests(unittest.TestCase):
         self.assertTrue(report.rows["filing_count"].isna().all())
         self.assertTrue(report.recurrence.empty)
         self.assertIsNotNone(report.totals["crash_count"])
-        self.assertEqual(len(report_figures(report)), 5)
+        self.assertEqual(len(report_figures(report)), 12)
 
     def test_citywide_thresholds_do_not_change_after_filters(self):
         full = build_report(self.frame, Selection())
@@ -152,9 +168,105 @@ class DashboardDataTests(unittest.TestCase):
             for transport in TRANSPORT_METRICS:
                 report = build_report(self.frame, replace(Selection(), housing_metric=housing, transport_metric=transport))
                 figures = report_figures(report)
-                self.assertEqual(set(figures), {"relationship", "concentration", "trend", "recurrence", "map"})
+                self.assertEqual(set(figures), {*RESEARCH_GRAPHS, "trend", "map"})
                 for figure in figures.values():
                     self.assertTrue(figure.to_json())
+
+    def test_unit_heatmap_preserves_signed_changes_and_unknowns(self):
+        frame = self.frame[self.frame["has_housing_data"]].drop_duplicates("zip_code").head(2).copy()
+        frame["year"] = 2022
+        frame["borough"] = "BRONX"
+        frame["net_new_units"] = [-12, np.nan]
+        figure = report_figures(build_report(frame, replace(
+            Selection(), boroughs=("BRONX",), years=(2022,),
+        )))["net-units"]
+        self.assertEqual(figure.data[0].z[0][0], -12)
+        frame["net_new_units"] = np.nan
+        figure = report_figures(build_report(frame, Selection()))["net-units"]
+        self.assertFalse(figure.data)
+        self.assertIn("No reported", figure.layout.annotations[0].text)
+
+    def test_nighttime_share_is_weighted_and_zero_denominators_are_undefined(self):
+        frame = self.frame[self.frame["has_housing_data"]].drop_duplicates("zip_code").head(2).copy()
+        frame["year"] = 2022
+        frame["borough"] = "BRONX"
+        frame["filing_count"] = 100
+        frame["night_crash_count"] = [1, 9]
+        frame["crashes_with_known_time"] = [1, 99]
+        figure = report_figures(build_report(frame, replace(
+            Selection(), boroughs=("BRONX",), years=(2022,),
+        )))["nighttime"]
+        self.assertAlmostEqual(figure.data[0].z[0][3], 10)
+        frame["crashes_with_known_time"] = 0
+        frame["night_crash_count"] = 0
+        figure = report_figures(build_report(frame, Selection()))["nighttime"]
+        self.assertFalse(figure.data)
+        self.assertIn("No known-time crashes", figure.layout.annotations[0].text)
+
+    def test_endpoint_changes_match_same_zip_and_selected_years(self):
+        selection = replace(Selection(), years=(2023, 2025))
+        report = build_report(self.frame, selection)
+        figure = report_figures(report)["changes"]
+        known = report.rows[
+            report.rows["has_housing_data"] & report.rows["zip_code"].isin(report.crash_covered_zips)
+        ].set_index(["zip_code", "year"])
+        count = 0
+        for trace in figure.data:
+            for zip_data, x, y in zip(trace.customdata, trace.x, trace.y):
+                zip_code = zip_data[0]
+                self.assertEqual(x, known.loc[(zip_code, 2025), "filing_count"] - known.loc[(zip_code, 2023), "filing_count"])
+                self.assertEqual(y, known.loc[(zip_code, 2025), "crash_count"] - known.loc[(zip_code, 2023), "crash_count"])
+                count += 1
+        self.assertGreater(count, 0)
+
+    def test_lag_uses_only_exact_consecutive_years_in_applied_scope(self):
+        report = build_report(self.frame, replace(Selection(), years=(2022, 2023)))
+        figure = report_figures(report)["lagged"]
+        source = self.frame.set_index(["zip_code", "year"])
+        pooled = figure.data[0]
+        self.assertGreater(len(pooled.x), 0)
+        for (zip_code, year), x, y in zip(pooled.customdata, pooled.x, pooled.y):
+            self.assertEqual(year, 2022)
+            self.assertEqual(x, source.loc[(zip_code, 2022), "filing_count"])
+            self.assertEqual(y, source.loc[(zip_code, 2023), "crash_count"])
+        np.testing.assert_array_equal(figure.data[1].x, 0)
+        np.testing.assert_array_equal(figure.data[1].y, 0)
+        gaps = report_figures(build_report(self.frame, replace(Selection(), years=(2022, 2024))))["lagged"]
+        self.assertFalse(gaps.data)
+        self.assertIn("consecutive years", gaps.layout.annotations[0].text)
+
+    def test_borough_shares_use_selected_totals_and_preserve_unknowns(self):
+        report = build_report(self.frame, self.controls(boroughs=["BRONX", "QUEENS"], years=[2024]))
+        figure = report_figures(report)["borough-shares"]
+        for trace, metric in zip(figure.data, ["filing_count", "crash_count"]):
+            expected = report.rows.groupby("borough")[metric].sum(min_count=1).reindex(report.selection.boroughs)
+            np.testing.assert_allclose(trace.y, expected / expected.sum() * 100)
+        report = build_report(self.frame, self.controls(mode="search", query="10111 2022"))
+        figure = report_figures(report)["borough-shares"]
+        self.assertTrue(np.isnan(figure.data[0].y).all())
+
+    def test_indexed_trends_use_one_complete_panel_and_selected_baseline(self):
+        report = build_report(self.frame, replace(Selection(), years=(2023, 2025)))
+        figure = report_figures(report)["indexed-trend"]
+        covered = report.rows[report.rows["has_housing_data"]]
+        counts = covered.groupby("zip_code")["year"].nunique()
+        panel = covered[covered["zip_code"].isin(counts.index[counts.eq(2)])]
+        annual = panel.groupby("year")[["filing_count", "crash_count"]].sum()
+        for trace, metric in zip(figure.data, ["filing_count", "crash_count"]):
+            np.testing.assert_array_equal(trace.x, [2023, 2025])
+            np.testing.assert_allclose(trace.y, annual[metric] / annual.loc[2023, metric] * 100)
+        frame = self.frame.copy()
+        frame["fatalities_total"] = 0
+        figure = report_figures(build_report(frame, replace(Selection(), transport_metric="fatalities_total")))["indexed-trend"]
+        self.assertFalse(figure.data)
+        self.assertIn("positive first-year baseline", figure.layout.annotations[0].text)
+
+    def test_single_year_reports_explain_unavailable_time_comparisons(self):
+        figures = report_figures(build_report(self.frame, replace(Selection(), years=(2024,))))
+        for key in ["changes", "lagged", "indexed-trend"]:
+            with self.subTest(question=key):
+                self.assertFalse(figures[key].data)
+                self.assertTrue(figures[key].layout.annotations[0].text)
 
     def test_saved_selection_round_trip_and_tampered_values(self):
         selection = self.controls(mode="search", query="Brooklyn 2024 new buildings")
@@ -170,6 +282,9 @@ class DashboardDataTests(unittest.TestCase):
             path = Path(directory) / "bad.csv"
             for frame in [
                 self.frame.drop(columns="filing_count"),
+                self.frame.drop(columns="net_new_units"),
+                self.frame.drop(columns="night_crash_count"),
+                self.frame.assign(net_new_units=np.inf),
                 pd.concat([self.frame, self.frame.iloc[:1]], ignore_index=True),
                 self.frame.assign(has_housing_data="unknown"),
                 self.frame.assign(crash_count=-1),
@@ -210,11 +325,27 @@ class DashboardHTTPTests(unittest.TestCase):
         } | changes
         return self.invoke("..report-panel", values, "generate-button.n_clicks")
 
+    def assert_research_questions(self, panel):
+        nodes = list(component_nodes(panel))
+        headings = [
+            node["props"]["children"] for node in nodes
+            if node["type"] == "H2" and isinstance(node["props"].get("children"), str)
+            and node["props"]["children"].startswith("RQ")
+        ]
+        self.assertEqual([heading.split(" / ")[0] for heading in headings],
+                         [f"RQ{n}" for n in range(1, 11)])
+        graphs = [node["props"]["id"] for node in nodes if node["type"] == "Graph"]
+        self.assertEqual(len(graphs), 12)
+        self.assertEqual(len(graphs), len(set(graphs)))
+        for key in RESEARCH_GRAPHS:
+            self.assertIn(f"{key}-chart", graphs)
+
     def test_page_layout_assets_and_health(self):
         for path in ["/", "/_dash-layout", "/_dash-dependencies", "/assets/style.css", "/healthz"]:
             with self.client.get(path) as response:
                 self.assertEqual(response.status_code, 200)
         self.assertEqual(self.client.get("/healthz").json["rows"], len(self.frame))
+        self.assert_research_questions(self.client.get("/_dash-layout").json)
 
     def test_generate_search_refreshes_every_chart_and_controls(self):
         response = self.generate("Brooklyn 2024 new buildings", "search")
@@ -224,17 +355,8 @@ class DashboardHTTPTests(unittest.TestCase):
         panel = json.dumps(response["report-panel"])
         for graph in ["relationship", "concentration", "trend", "recurrence", "map"]:
             self.assertIn(f"{graph}-chart", panel)
-        def find_graphs(node):
-            if isinstance(node, dict):
-                if node.get("type") == "Graph":
-                    yield node["props"]
-                for value in node.values():
-                    yield from find_graphs(value)
-            elif isinstance(node, list):
-                for item in node:
-                    yield from find_graphs(item)
-        graphs = list(find_graphs(response["report-panel"]))
-        self.assertEqual(len(graphs), 5)
+        self.assert_research_questions(response["report-panel"])
+        graphs = [node["props"] for node in component_nodes(response["report-panel"]) if node["type"] == "Graph"]
         for graph in graphs:
             self.assertGreaterEqual(int(graph["style"]["height"].removesuffix("px")), 300)
             self.assertTrue(graph["responsive"])
@@ -259,6 +381,14 @@ class DashboardHTTPTests(unittest.TestCase):
         self.assertEqual(response["year-filter"]["value"], list(YEARS))
         self.assertEqual(response["selection-mode"]["value"], "filters")
         self.assertEqual(response["search-query"]["value"], "")
+        self.assert_research_questions(response["report-panel"])
+
+    def test_all_ten_questions_remain_visible_for_sparse_selections(self):
+        for query in ["10111 2022", "10044", "11201 2024"]:
+            with self.subTest(query=query):
+                response = self.generate(query, "search")
+                self.assert_research_questions(response["report-panel"])
+                self.assertFalse(response["download-button"]["disabled"])
 
     def test_download_uses_only_last_applied_selection(self):
         applied = self.generate("11201 2024", "search")["applied-selection"]["data"]
