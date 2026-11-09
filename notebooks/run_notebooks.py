@@ -1,4 +1,4 @@
-"""Execute Members 1-4 in dependency order, preserving outputs in each notebook."""
+"""Execute Members 1-5 in dependency order, preserving outputs in each notebook."""
 from copy import deepcopy
 from pathlib import Path
 
@@ -34,7 +34,8 @@ def execute(name, preparation_only=False):
         nbformat.write(notebook, path)
     else:
         nbformat.write(work, path)
-    plots = sum("image/png" in output.get("data", {})
+    plots = sum(any(kind in output.get("data", {})
+                    for kind in ("image/png", "application/vnd.plotly.v1+json"))
                 for cell in work.cells if cell.cell_type == "code"
                 for output in cell.get("outputs", []))
     print(f"Saved {name}: {plots} rendered figures", flush=True)
@@ -46,3 +47,4 @@ if __name__ == "__main__":
     execute("Member3_Integration.ipynb")
     execute("Member2_Transportation_SIRTA.ipynb")
     execute("Member4_Story_and_Final.ipynb")
+    execute("Member5_Website_Research.ipynb")

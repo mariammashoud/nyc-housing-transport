@@ -14,4 +14,4 @@ Deliverable: [Member4_Story_and_Final.ipynb](../../notebooks/Member4_Story_and_F
 ## Team review
 The notebook was assembled with AI assistance at the user's request; this does not imply the original contributors have approved its changes. Review findings, chart wording and contribution names before submission.
 
-Member 5's website/deployment remains intentionally deferred. The findings and limitations sections are ready to adapt for that website; do not present incomplete housing coverage as zero.
+Member 5's local dashboard now uses these findings/limitations and adds its own research notebook. Public deployment remains pending authorization. Do not present incomplete housing coverage as zero.

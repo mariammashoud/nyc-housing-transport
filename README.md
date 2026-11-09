@@ -17,13 +17,14 @@ Both sources are aggregated to **ZIP code x year**, then outer-joined. Housing u
 ## Start here
 - [Final notebook: Members 1-4](notebooks/Member4_Story_and_Final.ipynb) contains the complete pipeline, eight research questions with charts, calculated findings, limitations and NYC relevance.
 - Individual notebooks: [Housing](notebooks/Member1_Housing.ipynb), [Transportation](notebooks/Member2_Transportation_SIRTA.ipynb), [Integration](notebooks/Member3_Integration.ipynb).
+- [Member 5 research](notebooks/Member5_Website_Research.ipynb) adds two questions/charts on concentration and recurring high activity, using the same functions as the dashboard.
 - [Cleaned datasets](data/clean/) feed the future website.
-- [Member 5 checklist](members/member5_website/README.md): website and deployment are **not implemented yet**, intentionally deferred.
+- [Member 5 dashboard and checklist](members/member5_website/README.md): local website implemented; public deployment and a second-device live check remain pending.
 
-## Setup (Python 3.10+)
+## Setup (Python 3.12 recommended)
 ### Windows PowerShell
 ```powershell
-py -3 -m venv .venv
+py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m jupyter lab
 ```
@@ -46,7 +47,7 @@ From the repository root, using the environment above:
 ```
 On macOS/Linux, use `python notebooks/run_notebooks.py` and `python -m unittest discover -s tests -v`.
 
-The runner executes transportation preparation, housing, integration, transportation research, then the final consolidated notebook. It saves results and stops on cell errors. The final notebook can also run independently, top to bottom.
+The runner executes transportation preparation, housing, integration, transportation research, the final consolidated notebook, then Member 5's research notebook. It saves PNG or interactive Plotly results and stops on cell errors. The final notebook and Member 5 notebook can also run independently.
 
 First execution needs internet and downloads the complete 2022-2025 housing/transport windows. Raw CSVs and source/time/count JSON records are cached in ignored `data/raw/`. Delete the specific cache files intentionally to refresh. Downloads validate source row counts and fail explicitly, rather than silently using an incomplete sample. TLS uses the operating system certificate store.
 
@@ -74,10 +75,71 @@ The original notebooks have been corrected/assembled with AI assistance at the u
 | Member 2 - Mariam | Transportation | SIRTA EDA/cleaning, validation, weighted nighttime-share inputs, two completed cross-domain questions/charts |
 | Member 3 - Aya Sweed | Integration | Join justification, outer merge, post-join cleaning, derived measures, total reconciliation, two questions/charts |
 | Member 4 - name to confirm | Story/final notebook | Consolidated pipeline, two additional questions/charts, calculated findings, limitations and NYC impact |
-| Member 5 - name to confirm | Website/deployment | **Pending:** Dash filters, search, Generate Report, story, deployment and live testing |
+| Member 5 - name to confirm | Website/deployment | Dash filters/search, atomic Generate Report, five interactive chart types, story/coverage notices, CSV download, two additional research questions/charts, tests and Render configuration; public deployment pending |
 
 ## Website / deployment
-No app or live deployment is included yet. Member 5 should use the current integrated CSV and its coverage/provenance flags; see the [website checklist](members/member5_website/README.md). Hosting instructions and the live URL must be added after implementation and testing.
+
+### Run the dashboard locally
+The web app needs only the committed integrated CSV, not raw downloads or notebook execution. Its small dependency manifest is separate from the notebook dependencies.
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r app\requirements.txt
+.\.venv\Scripts\python.exe -m app.app
+```
+
+Open **http://127.0.0.1:8050/**. Stop with `Ctrl+C`. On macOS/Linux use `python -m pip install -r app/requirements.txt` and `python -m app.app` in the activated environment. Run from the repository root, not from inside `app/`. The web stack is pinned/tested on Python 3.12; the pinned Pandas version needs Python 3.11 or newer.
+
+### How to use it
+1. Choose boroughs, years, a housing measure and a transportation measure.
+2. Optionally select **Search** mode. Supported examples:
+   - `11201 2024`
+   - `Brooklyn 2024 new buildings`
+   - `Staten Island 2023 permits`
+   - `Manhattan 2025 fatalities`
+3. Click **Generate Report**. All charts, findings and cards update together. Changed controls do not apply until this button is clicked.
+4. **Download report CSV** exports the last applied selection, even if you have edited controls since then. **Reset all** restores the full default report.
+
+Search is a strict, documented parser, not general natural-language AI. It accepts known ZIPs, boroughs, years and measure keywords. Named fields override dropdowns; unspecified fields retain the dropdown selections. Unsupported text, conflicting measures, empty filters and empty results produce a visible error, clear the active report and disable downloading. Queries are limited to 160 characters.
+
+### Charts and Member 5 research
+- Scatter: selected housing versus transportation measure, one point per ZIP-year.
+- Grouped bars (RQ1): transportation event concentration across annual housing-activity groups, compared with each group's share of selected ZIP-years.
+- Aligned lines: yearly totals on independent, labelled count axes (no dual-axis comparison).
+- Heatmap (RQ2): ZIPs repeatedly meeting both high-activity thresholds, up to 20 shown.
+- Map: descriptive source-mean ZIP points; size encodes transportation and color encodes housing. Gray marks unknown housing.
+
+Annual benchmarks use all NYC housing-covered ZIPs **before filters**. High activity means a positive value at/above the year's 75th percentile; tied values stay together, so the high group is not necessarily exactly 25%. Unknown housing is excluded from paired-domain research, not turned into zero. Multi-year bar denominators count ZIP-years, not distinct residents. A recurring ZIP is jointly high in at least two selected years.
+
+The default snapshot's highest-filing group accounts for approximately **40.7%** of serious crashes among housing-covered ZIP-years; **32 ZIPs** are jointly high in at least two years. These are descriptive patterns, not causal effects or risk estimates. Figures, findings and denominators are recalculated for each applied selection.
+
+Coverage notices distinguish unknown housing, structural crash zeros and approximate housing ZIPs. ZIP 10044 has no map coordinates but remains in other charts/totals/downloads. The basemap uses CARTO/OpenStreetMap public tiles and requires internet; it is not an authoritative boundary map.
+
+### Tests
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+Dashboard tests cover filtering, search, exact percentile/tie handling, zero denominators, missingness, per-report isolation, all nine measure combinations, actual Dash HTTP callbacks, reset, last-applied downloads and the two executed research charts. Existing data-pipeline checks remain included.
+
+Local verification: **40 tests passed**, dependency checks passed, and desktop (1440px)/mobile (390px) browser checks showed no horizontal overflow. Search, dropdowns, reset, missing-data notices, map tiles and the generated CSV were checked. Explicit graph container heights prevent responsive charts collapsing on mobile.
+
+### Deploy on Render (account authorization required)
+**Status: configuration ready; no public deployment or live URL has been created.**
+
+1. Commit and push the Member 5 branch when ready. Render cannot deploy uncommitted local files.
+2. Sign in to Render with GitHub and authorize only the required repository.
+3. Create a **Blueprint** from this repository and select the branch containing [render.yaml](render.yaml).
+4. Review the proposed service and currently available free plan/limits. Confirm any account or billing choice yourself; do not enable paid services without checking.
+5. Keep the service root at the repository root. The blueprint specifies:
+   - Python: `3.12.10`
+   - Build: `pip install -r app/requirements.txt`
+   - Start: `gunicorn app.app:server --bind 0.0.0.0:$PORT --workers 1 --threads 2 --timeout 120 --access-logfile -`
+   - Health check: `/healthz`
+6. Deploy, open the assigned HTTPS URL, and check `/healthz` returns `status: "ok"` and the expected snapshot/row count.
+7. Test search, Generate Report, charts and CSV download on the public URL and on another device. Add that verified live URL here.
+
+For manual service creation, use the same commands/settings. No API tokens, database, external data downloads or secrets are required at runtime. Gunicorn is the Linux production server; use the local Dash command on Windows. The WSGI export and health endpoint are tested locally; actual Linux/Render startup and second-device live testing remain pending deployment authorization.
+
+If a free service sleeps, the first request may take longer. If deployment fails, inspect the Render logs: confirm the selected branch includes `app/` and `data/clean/integrated_dataset.csv`, use the repository root, and verify Python/dependency versions. Do not bypass data validation or TLS checks to hide errors.
 
 ## Collaboration
 - Follow the [data contract](docs/data_contract.md), [workflow](docs/WORKFLOW.md) and member-specific notes.

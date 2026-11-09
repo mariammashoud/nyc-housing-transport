@@ -1,12 +1,9 @@
-pandas
+-r app/requirements.txt
 numpy
 matplotlib
 seaborn
 scikit-learn
 scipy
-plotly
-dash
-gunicorn
 jupyter
 ipykernel
 nbclient
