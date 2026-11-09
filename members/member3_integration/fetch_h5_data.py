@@ -11,6 +11,9 @@ USAGE (from the repository root, with the .venv active):
 
 OUTPUT: data/raw/w9ak-ipjd.csv   (data/raw/ is git-ignored, so it is never committed)
 """
+import ssl
+import certifi
+SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 import io
 import sys
 import urllib.error
@@ -48,7 +51,7 @@ def fetch_csv(params):
     url = BASE_URL + "?" + urllib.parse.urlencode(params)
     request = urllib.request.Request(url, headers={"User-Agent": "nyc-housing-transport-student-project"})
     try:
-        with urllib.request.urlopen(request, timeout=180) as response:
+        with urllib.request.urlopen(request, timeout=180, context=SSL_CONTEXT) as response:
             return pd.read_csv(io.BytesIO(response.read()), low_memory=False)
     except urllib.error.HTTPError as error:
         print(f"\nHTTP ERROR {error.code} from the API. Server message:\n{error.read().decode(errors='replace')[:600]}")
