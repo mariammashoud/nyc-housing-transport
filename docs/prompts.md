@@ -51,7 +51,7 @@ An AI assistant (Claude) was used to help write and debug the code in this secti
 - Review my prompt log, add a prompts section to the notebook, and draft my 2-3 line contribution entry for the README. (checked the wording and added my name)
 
 ## Member 4 - Analysis, storytelling, final notebook
-Member 4's assembly and its prompt documentation follow on the stacked `fix/member-4` branch.
+The final notebook was assembled with AI assistance during the correction pass below. Individual Member 4 approval/name must still be confirmed.
 
 ## Member 5 - Website and deployment
 _(add prompts here)_
@@ -69,7 +69,7 @@ Implementation supported by those requests:
 - Corrected job-unit duplication, missing-as-zero assumptions, implausible unit handling, source download failures and integrated-file overwrite.
 - Replaced Member 2's research placeholders, fixed shared paths and nighttime denominators, and calculated actual interpretations.
 - Regenerated integration with dynamic key/total checks and honest exploratory interpretation; no causal claims or independent-observation inference from repeated ZIP-years.
-- Member 4's final pipeline, two questions/charts and story handoff are delivered separately on the stacked branch.
+- Assembled Member 4's final pipeline, added two questions/charts and a website-ready findings/limitations/impact handoff.
 - Added regression tests and an ordered notebook runner; updated related documentation. Website/deployment intentionally left untouched.
 
 

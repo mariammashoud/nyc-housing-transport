@@ -1,4 +1,4 @@
-"""Execute Members 1-3 in dependency order, preserving outputs in each notebook."""
+"""Execute Members 1-4 in dependency order, preserving outputs in each notebook."""
 from copy import deepcopy
 from pathlib import Path
 
@@ -45,3 +45,4 @@ if __name__ == "__main__":
     execute("Member1_Housing.ipynb")
     execute("Member3_Integration.ipynb")
     execute("Member2_Transportation_SIRTA.ipynb")
+    execute("Member4_Story_and_Final.ipynb")
