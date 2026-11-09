@@ -9,7 +9,8 @@ from flask import jsonify
 from app.charts import report_figures
 from app.data import (
     BENCHMARK_NOTE, BOROUGHS, DATA_PATH, HOUSING_METRICS, TRANSPORT_METRICS, YEARS,
-    Selection, SelectionError, build_report, dataset_fingerprint, load_dataset,
+    PROFILE_BENCHMARK_NOTE, RQ1_QUESTION,
+    Selection, SelectionError, build_report, building_profile_findings, dataset_fingerprint, load_dataset,
     report_csv, selection_from_controls, selection_from_store,
 )
 
@@ -36,6 +37,102 @@ def graph_card(title, subtitle, figure, graph_id, wide=False, children=None):
                   style={"height": f"{figure.layout.height}px", "width": "100%"}),
         *(children or []),
     ], className="chart-card" + (" chart-wide" if wide else ""))
+
+
+def render_story(report, profile_finding, profile_surprise, association, concentration_finding):
+    coverage = report.coverage
+    return html.Section([
+        html.Span("THE STORY / EVIDENCE BEFORE ASSUMPTIONS", className="eyebrow"),
+        html.H2("Development profiles. Recorded crashes. Better questions."),
+        html.P("Read the five-part story, then explore its evidence in the ten research questions. "
+               "Every discovery below follows the last generated selection.", className="chart-footnote"),
+        html.Div([
+            html.Article([
+                html.H3("1. The question"),
+                html.P(RQ1_QUESTION),
+                html.P("Why it matters to New Yorkers: development changes the places where people live and travel. "
+                       "Housing and street-safety reviews should be coordinated, but a busy or taller-development "
+                       "area should not automatically be labelled more dangerous."),
+                html.P("RQ1 asks about injury burden per recorded event, not just whether busy ZIPs have more of everything. "
+                       "RQ2, RQ5 and RQ6 separately examine counts, changes and a one-year lag."),
+                html.A("Start with the new integrated RQ1", href="#building-profile-chart"),
+            ], className="story-step", id="story-question"),
+            html.Article([
+                html.H3("2. The data"),
+                html.P([
+                    html.A("DOB NOW Build Job Application Filings (H5)",
+                           href="https://data.cityofnewyork.us/Housing-Development/DOB-NOW-Build-Job-Application-Filings/w9ak-ipjd",
+                           target="_blank", rel="noopener noreferrer"),
+                    " describes applications, reported building profiles and job-cohort units. ",
+                    html.A("SIRTA serious/fatal crash records (T4)",
+                           href="https://data.cityofnewyork.us/Transportation/Serious-Injury-Response-Tracking-Analysis-Program-/xeqp-qz8h",
+                           target="_blank", rel="noopener noreferrer"),
+                    " supplies recorded crash and injury outcomes.",
+                ]),
+                html.P("We aggregate each source to ZIP code x year for 2022-2025 and outer-join the keys, retaining "
+                       "unmatched rows. This connects places and years, not individual projects to individual crashes."),
+                html.Ul([
+                    html.Li("Cleaning: standardize dates, boroughs and five-digit ZIPs; remove duplicate filing IDs; "
+                            "deduplicate unit reports by base job across amendments. Unusable identifiers/date/location "
+                            "keys are excluded; impossible measurements are quarantined without discarding otherwise usable filings."),
+                    html.Li("Location: prefer official building postcode, never the owner's mailing ZIP. Missing building ZIPs "
+                            "can use a flagged nearest-crash approximation. Source-mean map points are not ZIP boundaries."),
+                    html.Li("Assumptions: housing-only rows have zero retained serious-crash records, not proof of no real crashes. "
+                            "Transport-only housing stays unknown. Missing map coordinates exclude points only, not totals or downloads."),
+                ]),
+                html.P(
+                    f"RQ1 uses {coverage['building_profile_rows']:,} paired ZIP-years. It excludes "
+                    f"{coverage['unknown_housing_rows']} rows with unknown housing, "
+                    f"{coverage['unknown_building_profile_rows']} housing-covered rows without a positive reported profile, and "
+                    f"{coverage['zero_crash_profile_rows']} profiled rows with no retained serious-crash record. "
+                    "Excluded RQ1 rows remain in the applied dataset and CSV.",
+                    id="story-profile-coverage",
+                ),
+            ], className="story-step", id="story-data"),
+            html.Article([
+                html.H3("3. The discovery"),
+                html.P(profile_finding, id="story-profile-finding"),
+                html.P([html.Strong("What challenges the simple story: "), profile_surprise],
+                       id="story-profile-surprise"),
+                html.P("The RQ1 boxes describe ZIP-year distributions; orange diamonds divide pooled injury counts "
+                       "by pooled crash counts. These are different summaries, not two estimates of personal risk."),
+                html.P(association),
+                html.P(concentration_finding),
+                html.Div([
+                    html.A("RQ1: profiles and injury burden", href="#building-profile-chart"),
+                    html.A("RQ2: raw count association", href="#relationship-chart"),
+                    html.A("RQ9: event concentration", href="#concentration-chart"),
+                ], className="story-links"),
+            ], className="story-step story-wide", id="story-discovery"),
+            html.Article([
+                html.H3("4. The limits"),
+                html.P("Correlation is not causation. We do not observe population, pedestrian/traffic exposure, street "
+                       "design or actual construction/work-zone timing. Nothing here estimates a development effect or an individual's risk."),
+                html.P("Proposed-story averages describe reported filings, not every building or completed construction. "
+                       "Filings include amendments and non-residential work; job-unit totals are incomplete and are not completed homes. "
+                       "SIRTA covers serious/fatal crashes, not all collisions."),
+                html.P("Missing and approximate ZIPs can bias comparisons. Unequal group sizes, tied quartiles, repeated ZIP-years, "
+                       "spatial dependence and four years of data limit inference. Equal medians do not prove equal distributions. "
+                       "A zero crash denominator is excluded from RQ1, not treated as zero injury burden."),
+            ], className="story-step", id="story-limits"),
+            html.Article([
+                html.H3("5. The impact"),
+                html.Ul([
+                    html.Li("DOT and city/housing planners: coordinate development reviews with street-level safety checks. "
+                            "Use these charts and the map to frame further investigation, then obtain traffic/pedestrian counts "
+                            "and actual construction dates before changing street design or permitting decisions."),
+                    html.Li("DOB and data stewards: prioritize missing building profiles, unit pairs and uncertain ZIP assignments "
+                            "for verification. RQ8 shows where reporting gaps weaken housing-unit conclusions."),
+                    html.Li("Community boards and residents: use the applied CSV and map to request local evidence and field reviews, "
+                            "not to label a ZIP safe/unsafe or blame development. Application volume alone is not a danger score."),
+                ]),
+                html.Div([
+                    html.A("Check reporting gaps in RQ8", href="#unit-reporting-chart"),
+                    html.A("Locate the evidence on the map", href="#map-chart"),
+                ], className="story-links"),
+            ], className="story-step", id="story-impact"),
+        ], className="story-grid"),
+    ], className="story-card", id="story")
 
 
 def render_report(report, fingerprint):
@@ -82,9 +179,7 @@ def render_report(report, fingerprint):
         f"In this selection, the pooled descriptive correlation is {paired[selection.housing_metric].corr(paired[selection.transport_metric]):.2f}."
         if varied else "This selection has too little variation for a meaningful correlation."
     )
-    unit_rows = report.rows[report.rows["has_housing_data"]]
-    known_jobs = int(unit_rows["jobs_with_known_units"].sum())
-    total_jobs = int(unit_rows["unique_job_count"].sum())
+    profile_finding, profile_surprise = building_profile_findings(report)
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     return [
         html.Div([
@@ -102,6 +197,7 @@ def render_report(report, fingerprint):
             f"{coverage['approximate_zip_filings']:,} housing filings use approximate ZIP assignment. "
             "Unknown housing is never replaced with zero.",
         ], className="coverage-note", id="coverage-notice"),
+        render_story(report, profile_finding, profile_surprise, association, concentration_finding),
         html.Section([
             html.Div([
                 html.Div([html.Span("THE TEAM'S RESEARCH", className="eyebrow"),
@@ -110,12 +206,16 @@ def render_report(report, fingerprint):
                        "Each question names its measures; fixed-outcome questions keep those measures when dropdowns change."),
             ], className="report-heading"),
             html.Div([
-                graph_card("RQ1 / Reported unit change",
-                           "How does reported net unit change among first-observed jobs vary by borough and cohort year?",
-                           figures["net-units"], "net-units-chart",
-                           children=[html.P(f"{known_jobs:,} of {total_jobs:,} first-observed jobs have complete unit pairs. "
-                                            "Partial reported totals are not completed homes; blank cells remain unknown.",
-                                            className="chart-footnote")]),
+                graph_card("RQ1 / Building profile and injury burden", RQ1_QUESTION,
+                           figures["building-profile"], "building-profile-chart", wide=True,
+                           children=[
+                               html.P(profile_finding, className="finding", id="building-profile-finding"),
+                               html.P(profile_surprise, className="finding", id="building-profile-surprise"),
+                               html.P("Each box summarizes ZIP-year injury/crash ratios, with individual observations shown. "
+                                      "Orange diamonds are ratios of pooled counts, not averages of ZIP ratios. "
+                                      "Zero-crash rows cannot define this ratio. Both RQ1 measures stay fixed when metric dropdowns change. "
+                                      + PROFILE_BENCHMARK_NOTE, className="chart-footnote"),
+                           ]),
                 graph_card("RQ2 / Housing and transportation",
                            "Are ZIP-years with more housing activity also those with more recorded transportation events?",
                            figures["relationship"], "relationship-chart",
@@ -195,24 +295,6 @@ def render_report(report, fingerprint):
                                         "A small minimum marker keeps zero-count ZIPs visible; gray means housing unknown.",
                                         className="chart-footnote")]),
         ], className="charts-grid"),
-        html.Section([
-            html.Span("THE STORY / NOT A CAUSAL CLAIM", className="eyebrow"),
-            html.H2("More context. Better questions."),
-            html.Div([
-                html.Div([html.H3("What the selection shows"), html.P(association),
-                          html.P("Busy places can have more of both activities. That alone cannot tell us whether construction affects road safety.")]),
-                html.Div([html.H3("What the data cannot tell us"),
-                          html.P("DOB filings include amendments and non-residential work. They are not completed homes. "
-                                 "SIRTA covers serious/fatal crashes, not every collision. Population, traffic exposure "
-                                 "and actual construction timing are not measured.")]),
-                html.Div([html.H3("Why it matters for NYC"),
-                          html.P("Use these patterns to prioritize further street-level investigation, not to rank personal safety "
-                                 "or blame development. Combine them with traffic counts, population and construction timelines before policy decisions.")]),
-            ], className="story-grid"),
-            html.P("Repeated ZIP-years are not independent; spatial dependence and a four-year window limit inference. "
-                   "High-activity flags are relative descriptive benchmarks, not danger scores.",
-                   className="chart-footnote"),
-        ], className="story-card", id="story"),
         html.Footer([
             html.Span(f"Source snapshot {fingerprint} | Generated {generated}"),
             html.Span("2022-2025 complete years / Recorded events, not individual risk"),
@@ -259,7 +341,7 @@ def create_app(data_path=DATA_PATH):
                 ]),
                 html.Div([
                     html.Span("THE QUESTION", className="eyebrow"),
-                    html.P("Do places with more building applications also record more serious crashes?"),
+                    html.P("How do development profiles and serious road-crash outcomes overlap across NYC ZIP codes?"),
                     html.Div([html.Span("2 public datasets"), html.Span("4 complete years"),
                               html.Span(f"{frame['zip_code'].nunique()} ZIP codes")], className="hero-facts"),
                 ], className="question-card"),

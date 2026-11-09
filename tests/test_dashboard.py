@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -12,12 +13,12 @@ import nbformat
 from app.charts import report_figures
 from app.data import (
     BOROUGHS, HOUSING_METRICS, TRANSPORT_METRICS, YEARS, Selection, SelectionError,
-    annual_benchmarks, build_report, load_dataset, report_csv, selection_from_controls,
+    annual_benchmarks, build_report, building_profile_findings, load_dataset, report_csv, selection_from_controls,
     selection_from_store,
 )
 
 RESEARCH_GRAPHS = [
-    "net-units", "relationship", "fatal-share", "nighttime", "changes",
+    "building-profile", "relationship", "fatal-share", "nighttime", "changes",
     "lagged", "development-mix", "unit-reporting", "concentration", "recurrence",
 ]
 
@@ -53,6 +54,7 @@ class DashboardDataTests(unittest.TestCase):
         frame["fatal_crash_count"] = [1, 0, 1, 2]
         frame["unique_job_count"] = [1, 9, 10, 20]
         frame["jobs_with_known_units"] = [0, 9, 0, 20]
+        frame["avg_proposed_stories"] = [2, 4, 8, 16]
         return frame
 
     def test_default_totals_reconcile_with_source(self):
@@ -121,6 +123,7 @@ class DashboardDataTests(unittest.TestCase):
         self.assertEqual(report.coverage["known_housing_rows"], 0)
         self.assertTrue(report.rows["filing_count"].isna().all())
         self.assertTrue(report.recurrence.empty)
+        self.assertTrue(report.building_profiles.empty)
         self.assertIsNotNone(report.totals["crash_count"])
         self.assertEqual(len(report_figures(report)), 12)
 
@@ -129,7 +132,8 @@ class DashboardDataTests(unittest.TestCase):
         local = build_report(self.frame, self.controls(boroughs=["BROOKLYN"], years=[2024]))
         keys = ["zip_code", "year"]
         expected = full.rows.set_index(keys).loc[local.rows.set_index(keys).index]
-        for column in ["housing_quartile", "housing_high", "transport_high", "joint_high", "crash_high"]:
+        for column in ["housing_quartile", "housing_high", "transport_high", "joint_high",
+                       "crash_high", "building_profile_group"]:
             pd.testing.assert_series_equal(local.rows.set_index(keys)[column], expected[column])
 
     def test_exact_75th_percentile_threshold_and_zero_ties(self):
@@ -184,19 +188,73 @@ class DashboardDataTests(unittest.TestCase):
                 for figure in figures.values():
                     self.assertTrue(figure.to_json())
 
-    def test_unit_heatmap_preserves_signed_changes_and_unknowns(self):
-        frame = self.frame[self.frame["has_housing_data"]].drop_duplicates("zip_code").head(2).copy()
-        frame["year"] = 2022
-        frame["borough"] = "BRONX"
-        frame["net_new_units"] = [-12, np.nan]
-        figure = report_figures(build_report(frame, replace(
-            Selection(), boroughs=("BRONX",), years=(2022,),
-        )))["net-units"]
-        self.assertEqual(figure.data[0].z[0][0], -12)
-        frame["net_new_units"] = np.nan
-        figure = report_figures(build_report(frame, Selection()))["net-units"]
+    def test_building_profile_question_integrates_stories_with_injury_crash_counts(self):
+        frame = self.research_rows()
+        frame["severe_injuries_total"] = [2, 9, 5, 20]
+        report = build_report(frame, Selection())
+        self.assertEqual(report.building_profiles["building_profile_group"].tolist(),
+                         ["Q1 / lowest", "Q2", "Q3", "Q4 / highest"])
+        np.testing.assert_allclose(report.building_profiles["injuries_per_crash"], [2, 1, .5, 1])
+        figure = report_figures(report)["building-profile"]
+        self.assertEqual(figure.data[0].type, "box")
+        np.testing.assert_allclose(figure.data[0].y, [2, 1, .5, 1])
+        np.testing.assert_allclose(figure.data[1].y, [2, 1, .5, 1])
+        changed = frame.copy()
+        changed["severe_injuries_total"] *= 2
+        doubled = build_report(changed, Selection())
+        np.testing.assert_allclose(doubled.building_profiles["injuries_per_crash"], [4, 2, 1, 2])
+
+    def test_profile_summary_distinguishes_pooled_ratios_from_zip_year_medians(self):
+        frame = self.research_rows()
+        frame["avg_proposed_stories"] = 5
+        frame["severe_injuries_total"] = [2, 9, 5, 20]
+        report = build_report(frame, Selection())
+        self.assertEqual(report.profile_summary.loc["Q4 / highest", "zip_years"], 4)
+        self.assertEqual(report.profile_summary.loc["Q4 / highest", "median_injuries_per_crash"], 1)
+        self.assertAlmostEqual(report.profile_summary.loc["Q4 / highest", "pooled_injuries_per_crash"], 36 / 40)
+        self.assertTrue(report.profile_summary.loc["Q1 / lowest"].isna().all())
+        self.assertIn("one building-profile group", building_profile_findings(report)[1])
+        figure = report_figures(report)["building-profile"]
+        self.assertIn("no paired rows", figure.layout.xaxis.ticktext[0])
+        self.assertIn("n=4", figure.layout.xaxis.ticktext[3])
+
+    def test_profile_exclusions_preserve_records_and_never_treat_zero_crashes_as_zero_burden(self):
+        frame = self.research_rows()
+        frame["avg_proposed_stories"] = [2, np.nan, 0, 16]
+        frame.loc[frame.index[0], "crash_count"] = 0
+        report = build_report(frame, Selection())
+        self.assertEqual(report.coverage["unknown_building_profile_rows"], 2)
+        self.assertEqual(report.coverage["zero_crash_profile_rows"], 1)
+        self.assertEqual(report.coverage["building_profile_rows"], 1)
+        self.assertEqual(len(report.rows), 4)
+        self.assertEqual(len(pd.read_csv(io.StringIO(report_csv(report)))), 4)
+        self.assertEqual(report.building_profiles["crash_count"].tolist(), [20])
+        frame["avg_proposed_stories"] = np.nan
+        report = build_report(frame, Selection())
+        self.assertTrue(report.building_profiles.empty)
+        figure = report_figures(report)["building-profile"]
         self.assertFalse(figure.data)
-        self.assertIn("No reported", figure.layout.annotations[0].text)
+        self.assertIn("No paired", figure.layout.annotations[0].text)
+        self.assertIn("No paired ZIP-years", building_profile_findings(report)[0])
+
+    def test_profile_question_has_fixed_measures_and_selection_aware_findings(self):
+        report = build_report(self.frame, Selection())
+        alternate = build_report(self.frame, replace(
+            Selection(), housing_metric="new_construction_filings", transport_metric="fatalities_total",
+        ))
+        pd.testing.assert_frame_equal(report.profile_summary, alternate.profile_summary)
+        np.testing.assert_allclose(report.building_profiles["injuries_per_crash"],
+                                   alternate.building_profiles["injuries_per_crash"])
+        finding, surprise = building_profile_findings(report)
+        self.assertIn(f"{len(report.building_profiles):,} eligible ZIP-years", finding)
+        medians = report.profile_summary["median_injuries_per_crash"].dropna()
+        if medians.round(12).nunique() == 1:
+            self.assertIn("share a median", surprise)
+            self.assertIn("do not establish equal distributions", surprise)
+        local = build_report(self.frame, self.controls(boroughs=["BRONX"], years=[2024]))
+        self.assertEqual(set(local.building_profiles["borough"]), {"BRONX"})
+        self.assertEqual(set(local.building_profiles["year"]), {2024})
+        self.assertNotEqual(building_profile_findings(local)[0], finding)
 
     def test_nighttime_share_is_weighted_and_zero_denominators_are_undefined(self):
         frame = self.frame[self.frame["has_housing_data"]].drop_duplicates("zip_code").head(2).copy()
@@ -339,6 +397,10 @@ class DashboardDataTests(unittest.TestCase):
                 self.frame.drop(columns="net_new_units"),
                 self.frame.drop(columns="night_crash_count"),
                 self.frame.drop(columns="fatal_crash_count"),
+                self.frame.drop(columns="avg_proposed_stories"),
+                self.frame.assign(avg_proposed_stories=np.inf),
+                self.frame.assign(avg_proposed_stories=-1),
+                self.frame.assign(avg_proposed_stories="tall"),
                 self.frame.assign(fatal_crash_count=self.frame["crash_count"] + 1),
                 self.frame.assign(new_construction_filings=self.frame["filing_count"] + 1),
                 self.frame.assign(jobs_with_known_units=self.frame["unique_job_count"] + 1),
@@ -393,6 +455,7 @@ class DashboardHTTPTests(unittest.TestCase):
         ]
         self.assertEqual([heading.split(" / ")[0] for heading in headings],
                          [f"RQ{n}" for n in range(1, 11)])
+        self.assertEqual(headings[0], "RQ1 / Building profile and injury burden")
         self.assertEqual(headings[2], "RQ3 / Fatal-crash share")
         self.assertEqual(headings[6], "RQ7 / Development mix")
         self.assertEqual(headings[7], "RQ8 / Unit-reporting gaps")
@@ -401,6 +464,7 @@ class DashboardHTTPTests(unittest.TestCase):
         self.assertEqual(len(graphs), len(set(graphs)))
         for key in RESEARCH_GRAPHS:
             self.assertIn(f"{key}-chart", graphs)
+        self.assertNotIn("What changed:", json.dumps(panel))
 
     def test_page_layout_assets_and_health(self):
         for path in ["/", "/_dash-layout", "/_dash-dependencies", "/assets/style.css", "/healthz"]:
@@ -408,6 +472,42 @@ class DashboardHTTPTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 200)
         self.assertEqual(self.client.get("/healthz").json["rows"], len(self.frame))
         self.assert_research_questions(self.client.get("/_dash-layout").json)
+
+    def test_story_has_all_five_chapters_and_links_to_its_evidence(self):
+        layout = self.client.get("/_dash-layout").json
+        nodes = list(component_nodes(layout))
+        by_id = {node["props"]["id"]: node for node in nodes if "id" in node["props"]}
+        story = by_id["story"]
+        headings = [node["props"]["children"] for node in component_nodes(story) if node["type"] == "H3"]
+        self.assertEqual(headings, ["1. The question", "2. The data", "3. The discovery", "4. The limits", "5. The impact"])
+        text = json.dumps(story)
+        for required in ["New Yorkers", "DOB NOW", "SIRTA", "ZIP code x year", "outer-join",
+                         "postcode", "owner", "Correlation is not causation", "traffic", "Community boards"]:
+            self.assertIn(required, text)
+        for target in ["building-profile", "relationship", "concentration", "unit-reporting", "map"]:
+            self.assertIn(f'"href": "#{target}-chart"', text)
+            self.assertIn(f"{target}-chart", by_id)
+        self.assertLess(nodes.index(story), nodes.index(by_id["research-questions"]))
+        self.assertEqual(sum(node["props"].get("id") == "story" for node in nodes), 1)
+        self.assertNotIn("rq1-change", by_id)
+
+    def test_generated_story_uses_the_same_findings_as_the_applied_research_chart(self):
+        response = self.generate("Bronx 2024", "search")
+        expected = build_report(self.frame, Selection(boroughs=("BRONX",), years=(2024,)))
+        finding, surprise = building_profile_findings(expected)
+        by_id = {node["props"]["id"]: node for node in component_nodes(response["report-panel"])
+                 if "id" in node["props"]}
+        self.assertEqual(by_id["story-profile-finding"]["props"]["children"], finding)
+        self.assertEqual(by_id["building-profile-finding"]["props"]["children"], finding)
+        self.assertEqual(by_id["building-profile-surprise"]["props"]["children"], surprise)
+        self.assertIn(surprise, json.dumps(by_id["story-profile-surprise"]))
+        coverage = by_id["story-profile-coverage"]["props"]["children"]
+        self.assertIn(f"{expected.coverage['building_profile_rows']:,} paired ZIP-years", coverage)
+        response = self.generate("10111 2022", "search")
+        by_id = {node["props"]["id"]: node for node in component_nodes(response["report-panel"])
+                 if "id" in node["props"]}
+        self.assertIn("No paired ZIP-years", by_id["story-profile-finding"]["props"]["children"])
+        self.assertIn("no building-profile comparison", json.dumps(by_id["story-profile-surprise"]))
 
     def test_generate_search_refreshes_every_chart_and_controls(self):
         response = self.generate("Brooklyn 2024 new buildings", "search")
@@ -468,6 +568,56 @@ class DashboardHTTPTests(unittest.TestCase):
 
 
 class DashboardNotebookTests(unittest.TestCase):
+    def test_member1_integrated_question_has_matching_executed_outputs_and_fresh_dependency_order(self):
+        root = Path(__file__).resolve().parents[1]
+        sources = []
+        for name in ["Member1_Housing.ipynb", "Member4_Story_and_Final.ipynb"]:
+            notebook = nbformat.read(root / "notebooks" / name, as_version=4)
+            nbformat.validate(notebook)
+            by_id = {cell.id: cell for cell in notebook.cells}
+            cell = by_id["d9889149"]
+            sources.append(cell.source)
+            for shared in ["load_dataset", "build_report", "building_profile_figure", "building_profile_findings"]:
+                self.assertIn(shared, cell.source)
+            self.assertIsNotNone(cell.execution_count)
+            self.assertFalse(any(o.output_type == "error" for o in cell.outputs))
+            plots = [o["data"]["application/vnd.plotly.v1+json"] for o in cell.outputs
+                     if "application/vnd.plotly.v1+json" in o.get("data", {})]
+            self.assertEqual(len(plots), 1)
+            self.assertEqual(plots[0]["data"][0]["type"], "box")
+            self.assertEqual(plots[0]["data"][1]["type"], "scatter")
+            self.assertTrue(any("text/markdown" in o.get("data", {}) for o in cell.outputs))
+            if name.startswith("Member4"):
+                ids = [c.id for c in notebook.cells]
+                self.assertLess(ids.index("38499c9f"), ids.index("d9889149"))
+                self.assertLess(ids.index("d9889149"), ids.index("b29f6624"))
+        self.assertEqual(sources[0], sources[1])
+
+    def test_notebook_runner_research_phase_preserves_preparation_outputs(self):
+        from notebooks import run_notebooks
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "research.ipynb"
+            original = nbformat.v4.new_notebook(cells=[
+                nbformat.v4.new_code_cell("prep = 1", execution_count=7),
+                nbformat.v4.new_markdown_cell("## 7. Research"),
+                nbformat.v4.new_code_cell("research = 1", execution_count=8),
+            ])
+            nbformat.write(original, path)
+            with patch.object(run_notebooks, "NOTEBOOKS", Path(directory)), \
+                    patch.object(run_notebooks, "NotebookClient") as client:
+                def executed():
+                    for cell in client.call_args.args[0].cells:
+                        if cell.cell_type == "code":
+                            cell.execution_count = 99
+                client.return_value.execute.side_effect = executed
+                run_notebooks.execute(path.name, research_only=True)
+            saved = nbformat.read(path, as_version=4)
+            self.assertEqual(len(saved.cells), len(original.cells))
+            self.assertEqual(saved.cells[0], original.cells[0])
+            self.assertEqual(saved.cells[2].execution_count, 99)
+            with self.assertRaises(ValueError):
+                run_notebooks.execute(path.name, preparation_only=True, research_only=True)
+
     def test_replacement_notebooks_share_dashboard_logic_and_have_fresh_outputs(self):
         root = Path(__file__).resolve().parents[1]
         expected = {

@@ -84,6 +84,7 @@ All source count/unit totals must reconcile through the merge. Ratios must never
 
 ### Distinct dashboard/notebook research summaries
 These are read-only calculations from the integrated dataset; they do not change its export:
+- **RQ1 / Building profile and injury burden:** group housing-covered ZIP-years by annual NYC-wide quartiles of positive `avg_proposed_stories`, before scope filters or zero-crash exclusions; ties stay together. For rows with a profile and `crash_count > 0`, calculate `severe_injuries_total / crash_count`. Box plots summarize these ZIP-year distributions and diamonds show sum injuries / sum crashes, not averages of ratios. Missing/nonpositive profiles and zero-crash denominators are excluded from RQ1 but retained in report rows/CSV. Report sample sizes and these exclusions. Story averages can be fractional and missing; invalid negative/nonfinite values fail validation. This is a filing-derived profile and recorded-event injury burden, not a completed-building characteristic or personal risk.
 - **RQ3 / Fatal-crash share:** sum `fatal_crash_count` / sum `crash_count` within each annual housing-activity group, using housing-covered rows with known fatal-crash counts. Exclude unknown fatal-crash status from both sides of the ratio. Fatal crashes count events, not people killed.
 - **RQ7 / Development mix:** sum `new_construction_filings` / sum `filing_count` for high-crash versus other housing-covered ZIP-years. High crash volume uses each year's full-city positive serious-crash counts at/above the 75th percentile before user filters, with ties retained. These fixed crash groups do not change when a different transportation measure is selected. Other filings equal total filings minus new-building filings; no residential/renovation meaning is inferred.
 - **RQ8 / Unit-reporting gaps:** sum (`unique_job_count` - `jobs_with_known_units`) / sum `unique_job_count` within each borough/year cohort. This describes incomplete reporting, not missing units as zeros.
@@ -93,6 +94,8 @@ Use ratios of pooled counts, never averages of ZIP percentages. Zero denominator
 ## Reproduction and final notebook
 Run `python notebooks/run_notebooks.py` from the repository root, then `python -m unittest discover -s tests -v`.
 
+The runner executes transport preparation, housing preparation/export, integration, then Member 1 integrated-data research. Member 1's research-only phase preserves preparation outputs. The consolidated notebook also places this research after Member 3's integration export, avoiding stale integrated inputs.
+
 [Member 4's final notebook](../notebooks/Member4_Story_and_Final.ipynb) consolidates the full preparation/integration pipeline, all Members 1-4 research questions, and Member 4's two additional charts and synthesis. It runs top to bottom. [Member 5's research notebook](../notebooks/Member5_Website_Research.ipynb) adds two questions/charts using the same calculations as the Dash dashboard. Public deployment remains pending.
 
 ## Member 5 read-only dashboard
@@ -100,4 +103,4 @@ The website reads the integrated CSV without changing it. It supports non-negati
 
 Each year's benchmark population is all housing-covered NYC ZIP-years, before visitor filters. Housing activity groups use annual quartile cutoffs; high activity requires a positive value at/above the 75th percentile. Ties stay together and all-zero measures have no high group. Joint-high flags require both selected measures to be high. Multi-year concentration uses ZIP-years, not distinct people or a risk denominator.
 
-Filtered downloads include the original columns plus `housing_quartile`, `housing_high`, `transport_high`, and `joint_high`. These additional fields describe the selected metric pair, not the fixed source schema. Unknown housing retains missing benchmark flags. No new integrated source file is written. Map-only exclusions are disclosed without changing other counts.
+Filtered downloads include the original columns plus `housing_quartile`, `housing_high`, `transport_high`, `joint_high`, `crash_high` and `building_profile_group`. The first four describe the selected metric pair; `crash_high` and `building_profile_group` use fixed serious-crash and proposed-story measures. Unknown housing retains missing benchmark flags. No new integrated source file is written. Map-only and RQ1-only exclusions are disclosed without changing report totals or exported rows.

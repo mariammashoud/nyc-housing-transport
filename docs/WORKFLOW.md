@@ -3,7 +3,7 @@
 ## Correction/reproduction order
 The original schedule below is historical. Members 1-4 now have revised deliverables; see the individual member READMEs and run `python notebooks/run_notebooks.py` to validate/reproduce them.
 
-Preparation order is **transport cleaning -> housing -> integration -> transport research -> final notebook -> Member 5 research**. Only Member 3 may write the final integrated CSV. Housing uses official building postcode first; units are job-deduplicated. Member 5's local dashboard is implemented on its own branch; public deployment requires the user's authorization and remains pending.
+Reproduction order is **transport cleaning -> housing preparation/export -> integration -> Member 1 integrated-data research -> transport research -> final notebook -> Member 5 research**. The runner splits Member 1 preparation and research, and the final notebook places Member 1 research after integration so its new RQ1 never relies on a stale integrated table. Only Member 3 may write the final integrated CSV. Housing uses official building postcode first; units are job-deduplicated. The local dashboard is implemented; public deployment requires the user's authorization and remains pending.
 
 ```
 Member 1 (housing)  ----\

@@ -78,11 +78,16 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 .chart-heading p { font-size: 12.5px; color: var(--muted); line-height: 1.7; margin: 0 0 8px; }
 .finding { border-top: 1px solid var(--line); padding-top: 14px; font-size: 13px; color: #386555; line-height: 1.7; }
 .chart-footnote { font-size: 12px; line-height: 1.8; color: var(--muted); }
-.story-card { background: #e9efe7; border-radius: 13px; padding: 30px; margin-top: 25px; }
+.story-card { background: #e9efe7; border-radius: 13px; padding: 30px; margin: 0 0 28px; }
 .story-card h2 { font-size: 27px; letter-spacing: -.8px; margin: 10px 0 22px; }
-.story-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 25px; }
-.story-grid h3 { font-size: 13px; margin: 0 0 12px; }
-.story-grid p { font-size: 13.5px; line-height: 1.8; color: #526a60; }
+.story-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.story-grid h3 { font-size: 15px; margin: 0 0 12px; }
+.story-grid p, .story-grid li { font-size: 13.5px; line-height: 1.8; color: #526a60; }
+.story-grid ul { padding-left: 20px; margin-bottom: 0; }
+.story-grid li + li { margin-top: 10px; }
+.story-step { padding: 20px; border: 1px solid #d6e1d3; border-radius: 9px; background: #f5f8f2; min-width: 0; overflow-wrap: anywhere; }
+.story-wide { grid-column: 1 / -1; }
+.story-links { display: flex; flex-wrap: wrap; gap: 12px 18px; font-size: 12.5px; line-height: 1.7; }
 .report-footer { display: flex; justify-content: space-between; gap: 16px; color: var(--muted); font-size: 11px; line-height: 1.8; margin: 20px 2px; }
 .empty-report { background: white; border: 1px solid var(--line); border-radius: 12px; padding: 40px; }
 .empty-report h2 { font-size: 22px; }

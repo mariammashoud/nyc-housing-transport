@@ -3,6 +3,7 @@
 Every prompt used in the project (AI or otherwise) is listed here, per member, with the step it supported.
 
 ## Website follow-up
+- Replace housing-only research question 1 with an original integrated-data question/visualization in Member 1's notebook and showcase the change on the website. The user selected building profiles versus serious-injury burden per recorded crash. Also make the website explicitly communicate the question/NYC relevance, datasets/join/cleaning/assumptions, calculated discovery/surprise, limits and actionable impact. Synchronize the final notebook, fix the research execution dependency, and verify shared calculations and outputs.
 - "there should be 10 research questions appears" - display the eight Members 1-4 questions alongside Member 5's two, numbered RQ1-RQ10, with applied-selection charts and regression tests.
 - "there are reppative questions want them diffrinant" - user approved replacing RQ3 with fatal-crash percentage, RQ7 with development mix and RQ8 with unit-reporting completeness, including corresponding notebook questions and regenerated outputs. Retain the other seven questions and ten total; share calculations between notebooks and dashboard and test exact denominators.
 

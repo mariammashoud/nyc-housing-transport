@@ -23,6 +23,16 @@ TRANSPORT_METRICS = {
 }
 QUARTILES = ("Q1 / lowest", "Q2", "Q3", "Q4 / highest")
 CRASH_GROUPS = ("Other crash volume", "High crash volume")
+RQ1_QUESTION = (
+    "Do ZIP-years with taller proposed building profiles have a different "
+    "serious-injury burden per recorded crash?"
+)
+PROFILE_BENCHMARK_NOTE = (
+    "Building-profile groups use each year's NYC-wide housing-covered ZIPs with a positive "
+    "reported mean of proposed stories, before scope filters or zero-crash exclusions. "
+    "Ties stay together. These are filing-derived profiles, not the height of every building "
+    "or evidence that construction took place."
+)
 BENCHMARK_NOTE = (
     "Groups use each year's NYC-wide, housing-covered ZIPs, before your filters. "
     "High means a positive value at or above the 75th percentile; ties stay together, "
@@ -60,6 +70,8 @@ class Report:
     fatal_share: pd.DataFrame
     development_mix: pd.DataFrame
     unit_reporting: pd.DataFrame
+    building_profiles: pd.DataFrame
+    profile_summary: pd.DataFrame
 
 
 def load_dataset(path=DATA_PATH):
@@ -69,6 +81,7 @@ def load_dataset(path=DATA_PATH):
         "zip_latitude", "zip_longitude", "official_zip_filings", "approximate_zip_filings",
         "net_new_units", "unique_job_count", "jobs_with_known_units",
         "night_crash_count", "crashes_with_known_time", "fatal_crash_count",
+        "avg_proposed_stories",
         *HOUSING_METRICS, *TRANSPORT_METRICS,
     }
     missing = required - set(frame.columns)
@@ -101,6 +114,12 @@ def load_dataset(path=DATA_PATH):
     known_units = units.dropna()
     if not np.isfinite(known_units).all() or known_units.mod(1).ne(0).any():
         raise ValueError("net_new_units must contain finite whole counts or missing values.")
+    stories = frame["avg_proposed_stories"]
+    if not pd.api.types.is_numeric_dtype(stories):
+        raise ValueError("avg_proposed_stories must be numeric.")
+    reported_stories = stories.dropna()
+    if not np.isfinite(reported_stories).all() or reported_stories.lt(0).any():
+        raise ValueError("avg_proposed_stories must be finite and non-negative or missing.")
     known = frame["has_housing_data"]
     if frame.loc[known, list(HOUSING_METRICS)].isna().any().any():
         raise ValueError("Housing-covered rows have unknown required filing counts.")
@@ -247,23 +266,28 @@ def selection_from_store(payload, frame):
     return validate_selection(selection, frame)
 
 
+def quartile_labels(values):
+    q25, q50, q75 = values.quantile([.25, .5, .75])
+    return np.select(
+        [values.gt(0) & values.ge(q75), values.gt(0) & values.ge(q50),
+         values.gt(0) & values.ge(q25)],
+        [QUARTILES[3], QUARTILES[2], QUARTILES[1]], default=QUARTILES[0],
+    )
+
+
 def annual_benchmarks(frame, housing_metric, transport_metric):
     """Use full-city annual benchmarks, never recompute ranks after user filters."""
     data = frame.copy()
     eligible = data["has_housing_data"]
     data["housing_quartile"] = pd.Series(pd.NA, index=data.index, dtype="string")
+    data["building_profile_group"] = pd.Series(pd.NA, index=data.index, dtype="string")
     for flag in ["housing_high", "transport_high", "joint_high", "crash_high"]:
         data[flag] = pd.Series(pd.NA, index=data.index, dtype="boolean")
     for _, group in data.loc[eligible].groupby("year"):
         housing = group[housing_metric]
         transport = group[transport_metric]
-        q25, q50, q75 = housing.quantile([.25, .5, .75])
-        labels = np.select(
-            [housing.gt(0) & housing.ge(q75), housing.gt(0) & housing.ge(q50),
-             housing.gt(0) & housing.ge(q25)],
-            [QUARTILES[3], QUARTILES[2], QUARTILES[1]], default=QUARTILES[0],
-        )
-        data.loc[group.index, "housing_quartile"] = labels
+        q75 = housing.quantile(.75)
+        data.loc[group.index, "housing_quartile"] = quartile_labels(housing)
         high_h = housing.gt(0) & housing.ge(q75)
         high_t = transport.gt(0) & transport.ge(transport.quantile(.75))
         data.loc[group.index, "housing_high"] = high_h
@@ -271,6 +295,9 @@ def annual_benchmarks(frame, housing_metric, transport_metric):
         data.loc[group.index, "joint_high"] = high_h & high_t
         crashes = group["crash_count"]
         data.loc[group.index, "crash_high"] = crashes.gt(0) & crashes.ge(crashes.quantile(.75))
+        profiles = group.loc[group["avg_proposed_stories"].gt(0), "avg_proposed_stories"]
+        if not profiles.empty:
+            data.loc[profiles.index, "building_profile_group"] = quartile_labels(profiles)
     return data
 
 
@@ -325,6 +352,23 @@ def build_report(frame, selection):
     unit_reporting["missing_unit_share"] = unit_reporting["jobs_missing_units"].div(
         unit_reporting["unique_job_count"].replace(0, np.nan),
     )
+    building_profiles = known.loc[
+        known["building_profile_group"].notna() & known["crash_count"].gt(0)
+    ].copy()
+    building_profiles["injuries_per_crash"] = (
+        building_profiles["severe_injuries_total"] / building_profiles["crash_count"]
+    )
+    profile_summary = building_profiles.groupby("building_profile_group").agg(
+        zip_years=("zip_code", "size"),
+        severe_injuries=("severe_injuries_total", "sum"),
+        recorded_crashes=("crash_count", "sum"),
+        median_injuries_per_crash=("injuries_per_crash", "median"),
+        min_reported_stories=("avg_proposed_stories", "min"),
+        max_reported_stories=("avg_proposed_stories", "max"),
+    ).reindex(QUARTILES)
+    profile_summary["pooled_injuries_per_crash"] = profile_summary["severe_injuries"].div(
+        profile_summary["recorded_crashes"].replace(0, np.nan),
+    )
     located = rows["zip_latitude"].notna()
     coverage = {
         "rows": len(rows),
@@ -334,13 +378,50 @@ def build_report(frame, selection):
         "missing_map_zips": sorted(rows.loc[~located, "zip_code"].unique().tolist()),
         "known_housing_rows": len(known),
         "unknown_fatal_status_rows": int(known["fatal_crash_count"].isna().sum()),
+        "unknown_building_profile_rows": int(known["building_profile_group"].isna().sum()),
+        "zero_crash_profile_rows": int(
+            (known["building_profile_group"].notna() & known["crash_count"].eq(0)).sum()
+        ),
+        "building_profile_rows": len(building_profiles),
     }
     crash_covered_zips = frozenset(frame.loc[frame["has_crash_data"], "zip_code"])
     return Report(
         selection=selection, rows=rows, totals=totals, concentration=concentration,
         recurrence=recurrence, coverage=coverage, crash_covered_zips=crash_covered_zips,
         fatal_share=fatal_share, development_mix=development_mix, unit_reporting=unit_reporting,
+        building_profiles=building_profiles, profile_summary=profile_summary,
     )
+
+
+def building_profile_findings(report):
+    summary = report.profile_summary.dropna(subset=["median_injuries_per_crash"])
+    if summary.empty:
+        return (
+            "No paired ZIP-years have both a positive reported building profile and recorded serious crashes in this selection.",
+            "There is no building-profile comparison to interpret; missing profiles and zero-crash denominators are not zero injury burdens.",
+        )
+    medians = summary["median_injuries_per_crash"]
+    pooled = summary["pooled_injuries_per_crash"]
+    finding = (
+        f"Across {len(report.building_profiles):,} eligible ZIP-years in "
+        f"{report.building_profiles['zip_code'].nunique():,} ZIPs, group medians range from "
+        f"{medians.min():.2f} to {medians.max():.2f} people seriously injured per recorded serious crash. "
+        f"Ratios of pooled injury/crash counts range from {pooled.min():.2f} to {pooled.max():.2f}."
+    )
+    if len(summary) == 1:
+        surprise = "Only one building-profile group is observed; this selection cannot support a between-group comparison."
+    elif medians.round(12).nunique() == 1:
+        surprise = (
+            f"All {len(summary)} observed building-profile groups share a median of {medians.iloc[0]:.2f}, "
+            "despite different proposed-story profiles. Equal medians do not establish equal distributions or equal risk."
+        )
+    else:
+        surprise = (
+            f"The highest observed profile group ({summary.index[-1]}) has a median of {medians.iloc[-1]:.2f}, "
+            f"versus {medians.iloc[0]:.2f} in the lowest observed group ({summary.index[0]}). "
+            "Inspect the spread and unequal sample sizes, not just the ordering; this is not a height effect."
+        )
+    return finding, surprise
 
 
 def report_csv(report):

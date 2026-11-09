@@ -52,21 +52,45 @@ def scatter_figure(report):
     return style(figure, 430)
 
 
-def net_units_figure(report):
-    rows = report.rows[report.rows["has_housing_data"]]
-    if rows["net_new_units"].notna().sum() == 0:
-        return empty_figure("No reported job-cohort unit changes in this selection.")
-    summary = rows.groupby(["borough", "year"])["net_new_units"].sum(min_count=1).unstack()
-    summary = summary.reindex(index=report.selection.boroughs, columns=sorted(report.selection.years))
-    figure = go.Figure(go.Heatmap(
-        x=[str(y) for y in summary.columns], y=[b.title() for b in summary.index],
-        z=summary.to_numpy(), colorscale="RdBu", zmid=0,
-        colorbar={"title": "Net reported<br>unit change"},
-        hovertemplate="%{y}<br>Cohort year %{x}<br>Net reported unit change: %{z:,.0f}<extra></extra>",
+def building_profile_figure(report):
+    rows = report.building_profiles
+    if rows.empty:
+        return empty_figure("No paired building profiles and positive serious-crash counts in this selection.")
+    summary = report.profile_summary
+    figure = go.Figure(go.Box(
+        x=rows["building_profile_group"], y=rows["injuries_per_crash"],
+        name="ZIP-year distribution", boxpoints="all", jitter=.35, pointpos=0,
+        marker={"color": TEAL, "opacity": .4, "size": 4}, line={"color": TEAL},
+        customdata=rows[["zip_code", "year", "avg_proposed_stories",
+                         "severe_injuries_total", "crash_count"]].to_numpy(),
+        hovertemplate="ZIP %{customdata[0]} / %{customdata[1]}<br>"
+                      "Reported mean proposed stories: %{customdata[2]:.2f}<br>"
+                      "People seriously injured: %{customdata[3]:,.0f}<br>"
+                      "Recorded serious crashes: %{customdata[4]:,.0f}<br>"
+                      "Injuries per crash: %{y:.2f}<extra></extra>",
     ))
-    figure.update_xaxes(type="category", title_text="First-observed job year")
-    figure.update_yaxes(title_text="Borough")
-    return style(figure, 410)
+    figure.add_scatter(
+        x=list(QUARTILES), y=summary["pooled_injuries_per_crash"], mode="markers",
+        name="Pooled injury/crash ratio", marker={"color": ORANGE, "symbol": "diamond", "size": 11},
+        customdata=summary[["zip_years", "severe_injuries", "recorded_crashes"]].to_numpy(),
+        hovertemplate="%{x}<br>ZIP-years: %{customdata[0]:,.0f}<br>"
+                      "People seriously injured: %{customdata[1]:,.0f}<br>"
+                      "Recorded serious crashes: %{customdata[2]:,.0f}<br>Pooled ratio: %{y:.2f}<extra></extra>",
+    )
+    tick_labels = [
+        label.replace(" / ", "<br>") + (
+            "<br>no paired rows" if pd.isna(summary.loc[label, "zip_years"])
+            else f"<br>n={int(summary.loc[label, 'zip_years'])}"
+        )
+        for label in QUARTILES
+    ]
+    figure.update_xaxes(type="category", categoryorder="array", categoryarray=list(QUARTILES),
+                       tickmode="array", tickvals=list(QUARTILES), ticktext=tick_labels,
+                       title_text="Annual NYC reported proposed-story profile")
+    figure.update_yaxes(title_text="Seriously injured people / serious crash", rangemode="tozero")
+    style(figure, 470)
+    figure.update_layout(margin={"b": 110}, legend={"y": -.3})
+    return figure
 
 
 def fatal_share_figure(report):
@@ -303,7 +327,7 @@ def map_figure(report):
 
 def report_figures(report):
     return {
-        "net-units": net_units_figure(report), "fatal-share": fatal_share_figure(report),
+        "building-profile": building_profile_figure(report), "fatal-share": fatal_share_figure(report),
         "nighttime": nighttime_figure(report), "changes": changes_figure(report),
         "lagged": lagged_figure(report), "development-mix": development_mix_figure(report),
         "unit-reporting": unit_reporting_figure(report),

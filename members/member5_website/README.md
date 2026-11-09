@@ -14,6 +14,8 @@
 - [x] CSV download uses only the last applied selection and preserves missing values/source/benchmark flags.
 - [x] Scatter, grouped bars, aligned lines, heatmap and map; hover/zoom and PNG chart export.
 - [x] Housing/transportation relationship chart and a clear story/limitations/NYC relevance section.
+- [x] Five explicit story chapters: the question/NYC relevance, data/join/cleaning/assumptions, calculated discovery/surprise, limits and audience-specific impact, linked to the charts and updated atomically with the report.
+- [x] Original integrated RQ1 replaces the housing-only unit-change heatmap with proposed-story profiles versus serious-injury burden per recorded crash; its findings and notebook outputs explain the integrated analysis.
 - [x] Responsive desktop/mobile layout, keyboard focus styles, labels and live status/error notices.
 - [x] Tests for business logic, exact thresholds, missingness, state isolation, Dash HTTP callbacks and downloads.
 - [x] All ten team research questions displayed as RQ1-RQ10; Member 5's two visualizations are shared between notebook and website.
@@ -29,7 +31,7 @@
 Open http://127.0.0.1:8050/. Stop with `Ctrl+C`. Use Python 3.12; no raw downloads or notebook execution are required to run the web app.
 
 ## Research questions
-The website displays Members 1-4's eight questions first: reported job-cohort unit change, housing/transportation association, fatal-crash percentage, nighttime shares, within-ZIP endpoint changes, one-year-lag comparisons, development mix and unit-reporting gaps. The three replacements (RQ3/RQ7/RQ8) use distinct outcomes and denominators, with matching regenerated notebook questions and outputs. See the [complete question list and filtering rules](../../README.md#ten-research-questions).
+The website displays Members 1-4's eight questions first: building profiles and injury burden per recorded crash, housing/transportation count association, fatal-crash percentage, nighttime shares, within-ZIP endpoint changes, one-year-lag comparisons, development mix and unit-reporting gaps. RQ1/RQ3/RQ7/RQ8 use distinct outcomes and denominators, with matching regenerated notebook questions and outputs. See the [complete question list and filtering rules](../../README.md#ten-research-questions).
 
 Member 5 adds:
 

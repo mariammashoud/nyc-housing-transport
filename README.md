@@ -5,7 +5,7 @@
 **Milestone 1:** source exploration, cleaning, integration, analysis and an interactive website.
 
 ## Main question
-How do development application activity and recorded serious road crashes vary together across New York City ZIP codes in 2022-2025?
+How do development application profiles and recorded serious road-crash outcomes overlap across New York City ZIP codes in 2022-2025, and what should planners investigate before linking the two?
 
 | Domain | Source | Catalog |
 |---|---|---|
@@ -47,7 +47,7 @@ From the repository root, using the environment above:
 ```
 On macOS/Linux, use `python notebooks/run_notebooks.py` and `python -m unittest discover -s tests -v`.
 
-The runner executes transportation preparation, housing, integration, transportation research, the final consolidated notebook, then Member 5's research notebook. It saves PNG or interactive Plotly results and stops on cell errors. The final notebook and Member 5 notebook can also run independently.
+The runner executes transportation preparation, housing preparation/export, integration, Member 1's integrated-data research, transportation research, the final consolidated notebook, then Member 5's research notebook. Splitting Member 1's preparation and research ensures that its new RQ1 reads the freshly integrated table, not a stale snapshot. It saves PNG or interactive Plotly results and stops on cell errors. The final notebook places Member 1's research after its integration export and can run independently; Member 5's notebook also runs independently from the committed integrated CSV.
 
 First execution needs internet and downloads the complete 2022-2025 housing/transport windows. Raw CSVs and source/time/count JSON records are cached in ignored `data/raw/`. Delete the specific cache files intentionally to refresh. Downloads validate source row counts and fail explicitly, rather than silently using an incomplete sample. TLS uses the operating system certificate store.
 
@@ -104,7 +104,7 @@ Search is a strict, documented parser, not general natural-language AI. It accep
 ### Ten research questions
 The website shows all ten questions, with one interactive chart per question, in team order:
 
-1. **RQ1 / Member 1:** reported net unit change by borough and first-observed job year (diverging heatmap).
+1. **RQ1 / Member 1:** serious-injury burden per recorded crash across reported proposed-story profiles (box plots with pooled-ratio diamonds).
 2. **RQ2 / Member 1:** housing activity and recorded transportation events by ZIP-year (scatter).
 3. **RQ3 / Member 2:** percentage of recorded serious crashes that are fatal, by housing-activity group (bars).
 4. **RQ4 / Member 2:** nighttime crash share by borough and housing-activity group (weighted-share heatmap).
@@ -115,7 +115,23 @@ The website shows all ten questions, with one interactive chart per question, in
 9. **RQ9 / Member 5:** transportation concentration across annual housing-activity groups (grouped bars).
 10. **RQ10 / Member 5:** recurring jointly high activity, up to 20 ZIPs (heatmap).
 
-All questions follow the applied borough/year/ZIP scope. Measure dropdowns generalize the filing/crash comparisons; RQ1 uses reported units, RQ3 keeps its fatal/serious-crash outcome, RQ7 keeps its filing categories and serious-crash groups, and RQ8 keeps its job-reporting counts. RQ3 and RQ4 group by the selected housing measure using fixed annual NYC benchmarks rather than re-ranking selected ZIP-years. RQ4 divides summed nighttime counts by summed known-time crash counts. RQ5 excludes ZIPs without housing at both selected endpoints. RQ5/RQ6 exclude ZIPs never present in the full snapshot's crash source. RQ6 only pairs exact consecutive years within the selection. Missing coverage, insufficient years and undefined denominators produce explicit chart notices, not fabricated zeros; all ten question headings remain visible.
+All questions follow the applied borough/year/ZIP scope. Measure dropdowns generalize the filing/crash comparisons; RQ1 keeps its proposed-story and injury/crash measures, RQ3 keeps its fatal/serious-crash outcome, RQ7 keeps its filing categories and serious-crash groups, and RQ8 keeps its job-reporting counts. RQ3 and RQ4 group by the selected housing measure using fixed annual NYC benchmarks rather than re-ranking selected ZIP-years. RQ4 divides summed nighttime counts by summed known-time crash counts. RQ5 excludes ZIPs without housing at both selected endpoints. RQ5/RQ6 exclude ZIPs never present in the full snapshot's crash source. RQ6 only pairs exact consecutive years within the selection. Missing coverage, insufficient years and undefined denominators produce explicit chart notices, not fabricated zeros; all ten question headings remain visible.
+
+### New integrated RQ1 and the website story
+**Question:** Do ZIP-years with taller proposed building profiles have a different serious-injury burden per recorded crash?
+
+This replaces the housing-only unit-change heatmap with an original integrated-data visualization: DOB's `avg_proposed_stories` defines annual NYC-wide profile groups, and SIRTA's `severe_injuries_total / crash_count` supplies the outcome. Profile benchmarks use housing-covered ZIPs with positive reported story averages before scope filters or zero-crash exclusions; ties stay together. The analysis excludes unknown profiles and zero-crash denominators without removing those records from totals or CSV downloads. Boxes/points describe individual ZIP-year ratios; orange diamonds divide pooled injury counts by pooled crash counts, not averages of ZIP ratios. These are recorded-event injury burdens, not personal risk or building-height effects.
+
+[Member 1's notebook](notebooks/Member1_Housing.ipynb), the [final consolidated notebook](notebooks/Member4_Story_and_Final.ipynb), and the website share calculations, findings and Plotly rendering. The website explicitly labels what changed from the former heatmap.
+
+The website's five-part story appears before the research charts and links directly to the evidence:
+1. **The question:** why coordinated development/street-safety investigation matters to New Yorkers, with RQ1 distinct from RQ2's raw count association.
+2. **The data:** named source links; ZIP/year outer join; cleaning, job deduplication, official/approximate ZIPs, structural-zero assumptions and exact scope-specific RQ1 exclusions.
+3. **The discovery:** calculated RQ1 findings and a pattern that challenges the simple story, alongside RQ2 association and RQ9 concentration. All update with Generate Report.
+4. **The limits:** missing exposure and construction timing, incomplete/filing-derived measures, coverage bias, unequal samples, repeated ZIP-years, spatial dependence and correlation versus causation.
+5. **The impact:** specific next steps for DOT/housing planners, DOB/data stewards and community boards/residents, requiring street-level validation rather than danger rankings or causal claims.
+
+In the current default snapshot, RQ1 includes **697 ZIP-years in 183 ZIPs**. All four observed profile groups have a median of **1.00 seriously injured person per recorded serious crash**; pooled group ratios range from approximately **1.00 to 1.05**. Equal medians do not establish equal distributions or equal risk. The story recalculates these results and reports unavailable comparisons honestly for sparse selections.
 
 The three replacements ask different things, not just differently worded count correlations:
 - **RQ3 / Event severity:** summed fatal-crash counts / summed serious-crash counts **within each housing group**. This uses crashes, not numbers of people killed; unknown fatal-crash status is excluded from both numerator and denominator. Unlike RQ9, this is not each group's share of all transportation events.
@@ -136,9 +152,11 @@ Coverage notices distinguish unknown housing, structural crash zeros and approxi
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
-Dashboard tests cover all ten question headings on initial, filtered, sparse and reset reports; all twelve chart containers; exact fatal-crash, filing-mix, job-reporting and nighttime ratios; fixed crash groups; endpoint/lag matching; filtering, search, percentile/tie handling, missingness, state isolation, all nine measure combinations, actual Dash HTTP callbacks, downloads and the executed notebook charts. Existing data-pipeline checks remain included.
+Dashboard tests cover all ten question headings on initial, filtered, sparse and reset reports; all twelve chart containers; exact building-profile, fatal-crash, filing-mix, job-reporting and nighttime calculations; annual benchmark stability; endpoint/lag matching; all nine measure combinations; the five story chapters and applied findings; actual Dash callbacks/downloads; notebook execution order and research-only output preservation; and executed notebook charts. Existing data-pipeline checks remain included.
 
-Latest verification: **35 dashboard tests and 2 notebook regression tests passed**. The four changed research code cells were executed and their regenerated charts/findings saved in the two corresponding notebooks. Browser checks confirmed ten distinct question cards, all twelve charts, working filtered reports and no horizontal overflow on desktop (1440px) or mobile (390px) page loads. Explicit graph container heights prevent charts collapsing on mobile.
+Latest automated verification: **42 dashboard tests and 2 notebook regression tests passed**. Integrated RQ1 and its dependent RQ2 were executed in both corresponding notebooks; Member 1's actual research-only runner phase was also executed. Source datasets were not modified. Explicit graph container heights prevent charts collapsing on mobile.
+
+Browser verification confirmed all five story chapters, ten research questions and twelve charts on desktop and a 390-pixel mobile viewport without horizontal overflow. Filtered and sparse selections kept the story and chart findings synchronized; evidence links and reset also worked. The new RQ1 chart displays group sample sizes and a readable mobile legend.
 
 ### Deploy on Render (account authorization required)
 **Status: configuration ready; no public deployment or live URL has been created.**
