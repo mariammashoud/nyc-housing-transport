@@ -17,8 +17,8 @@ from app.data import (
 )
 
 RESEARCH_GRAPHS = [
-    "net-units", "relationship", "severe-injuries", "nighttime", "changes",
-    "lagged", "borough-shares", "indexed-trend", "concentration", "recurrence",
+    "net-units", "relationship", "fatal-share", "nighttime", "changes",
+    "lagged", "development-mix", "unit-reporting", "concentration", "recurrence",
 ]
 
 
@@ -42,6 +42,18 @@ class DashboardDataTests(unittest.TestCase):
         defaults = dict(boroughs=list(BOROUGHS), years=list(YEARS), housing_metric="filing_count",
                         transport_metric="crash_count", mode="filters", query="")
         return selection_from_controls(self.frame, **(defaults | changes))
+
+    def research_rows(self):
+        frame = self.frame[self.frame["has_housing_data"]].drop_duplicates("zip_code").head(4).copy()
+        frame["year"] = 2022
+        frame["borough"] = "BRONX"
+        frame["filing_count"] = 100
+        frame["new_construction_filings"] = [10, 20, 30, 80]
+        frame["crash_count"] = [1, 9, 10, 20]
+        frame["fatal_crash_count"] = [1, 0, 1, 2]
+        frame["unique_job_count"] = [1, 9, 10, 20]
+        frame["jobs_with_known_units"] = [0, 9, 0, 20]
+        return frame
 
     def test_default_totals_reconcile_with_source(self):
         report = build_report(self.frame, Selection())
@@ -117,7 +129,7 @@ class DashboardDataTests(unittest.TestCase):
         local = build_report(self.frame, self.controls(boroughs=["BROOKLYN"], years=[2024]))
         keys = ["zip_code", "year"]
         expected = full.rows.set_index(keys).loc[local.rows.set_index(keys).index]
-        for column in ["housing_quartile", "housing_high", "transport_high", "joint_high"]:
+        for column in ["housing_quartile", "housing_high", "transport_high", "joint_high", "crash_high"]:
             pd.testing.assert_series_equal(local.rows.set_index(keys)[column], expected[column])
 
     def test_exact_75th_percentile_threshold_and_zero_ties(self):
@@ -235,38 +247,80 @@ class DashboardDataTests(unittest.TestCase):
         self.assertFalse(gaps.data)
         self.assertIn("consecutive years", gaps.layout.annotations[0].text)
 
-    def test_borough_shares_use_selected_totals_and_preserve_unknowns(self):
-        report = build_report(self.frame, self.controls(boroughs=["BRONX", "QUEENS"], years=[2024]))
-        figure = report_figures(report)["borough-shares"]
-        for trace, metric in zip(figure.data, ["filing_count", "crash_count"]):
-            expected = report.rows.groupby("borough")[metric].sum(min_count=1).reindex(report.selection.boroughs)
-            np.testing.assert_allclose(trace.y, expected / expected.sum() * 100)
-        report = build_report(self.frame, self.controls(mode="search", query="10111 2022"))
-        figure = report_figures(report)["borough-shares"]
-        self.assertTrue(np.isnan(figure.data[0].y).all())
+    def test_fatal_share_pools_crashes_not_zip_percentages_or_people(self):
+        frame = self.research_rows()
+        frame["fatalities_total"] = 50
+        report = build_report(frame, Selection())
+        self.assertAlmostEqual(report.fatal_share.loc["Q4 / highest", "fatal_crash_share"], 4 / 40)
+        figure = report_figures(report)["fatal-share"]
+        self.assertAlmostEqual(figure.data[0].y[3], 10)
+        frame.loc[frame.index[0], "fatal_crash_count"] = np.nan
+        report = build_report(frame, Selection())
+        self.assertAlmostEqual(report.fatal_share.loc["Q4 / highest", "fatal_crash_share"], 3 / 39)
+        self.assertEqual(report.coverage["unknown_fatal_status_rows"], 1)
 
-    def test_indexed_trends_use_one_complete_panel_and_selected_baseline(self):
-        report = build_report(self.frame, replace(Selection(), years=(2023, 2025)))
-        figure = report_figures(report)["indexed-trend"]
-        covered = report.rows[report.rows["has_housing_data"]]
-        counts = covered.groupby("zip_code")["year"].nunique()
-        panel = covered[covered["zip_code"].isin(counts.index[counts.eq(2)])]
-        annual = panel.groupby("year")[["filing_count", "crash_count"]].sum()
-        for trace, metric in zip(figure.data, ["filing_count", "crash_count"]):
-            np.testing.assert_array_equal(trace.x, [2023, 2025])
-            np.testing.assert_allclose(trace.y, annual[metric] / annual.loc[2023, metric] * 100)
-        frame = self.frame.copy()
-        frame["fatalities_total"] = 0
-        figure = report_figures(build_report(frame, replace(Selection(), transport_metric="fatalities_total")))["indexed-trend"]
-        self.assertFalse(figure.data)
-        self.assertIn("positive first-year baseline", figure.layout.annotations[0].text)
+    def test_development_mix_compares_filing_types_with_fixed_crash_groups(self):
+        report = build_report(self.research_rows(), Selection())
+        self.assertAlmostEqual(report.development_mix.loc["Other crash volume", "new_building_share"], .2)
+        self.assertAlmostEqual(report.development_mix.loc["High crash volume", "new_building_share"], .8)
+        figure = report_figures(report)["development-mix"]
+        np.testing.assert_allclose(figure.data[0].y, [20, 80])
+        np.testing.assert_allclose(figure.data[1].y, [80, 20])
+        selection = replace(Selection(), housing_metric="new_construction_filings", transport_metric="fatalities_total")
+        alternate = build_report(self.research_rows(), selection)
+        pd.testing.assert_frame_equal(report.development_mix, alternate.development_mix)
+        pd.testing.assert_frame_equal(report.unit_reporting, alternate.unit_reporting)
+
+    def test_unit_reporting_weights_jobs_and_respects_borough_year_scope(self):
+        report = build_report(self.research_rows(), Selection())
+        self.assertAlmostEqual(report.unit_reporting.loc[("BRONX", 2022), "missing_unit_share"], 11 / 40)
+        figure = report_figures(report)["unit-reporting"]
+        self.assertAlmostEqual(figure.data[0].z[0][0], 27.5)
+        selection = self.controls(boroughs=["QUEENS"], years=[2024])
+        local = build_report(self.frame, selection)
+        self.assertEqual(local.unit_reporting.index.tolist(), [("QUEENS", 2024)])
+        expected = local.rows["unique_job_count"].sum() - local.rows["jobs_with_known_units"].sum()
+        self.assertEqual(local.unit_reporting.loc[("QUEENS", 2024), "jobs_missing_units"], expected)
+
+    def test_replacements_handle_zero_denominators_and_unknown_coverage(self):
+        frame = self.research_rows()
+        frame["crash_count"] = 0
+        frame["fatal_crash_count"] = 0
+        frame["filing_count"] = 0
+        frame["new_construction_filings"] = 0
+        frame["unique_job_count"] = 0
+        frame["jobs_with_known_units"] = 0
+        reports = [
+            build_report(frame, Selection()),
+            build_report(self.frame, self.controls(mode="search", query="10111 2022")),
+        ]
+        for report in reports:
+            figures = report_figures(report)
+            for key in ["fatal-share", "development-mix", "unit-reporting"]:
+                with self.subTest(question=key):
+                    self.assertFalse(figures[key].data)
+                    self.assertTrue(figures[key].layout.annotations[0].text)
+
+    def test_replacements_cannot_duplicate_relationship_when_injuries_are_selected(self):
+        report = build_report(self.frame, replace(Selection(), transport_metric="severe_injuries_total"))
+        figures = report_figures(report)
+        self.assertTrue(all(trace.type == "scatter" for trace in figures["relationship"].data))
+        self.assertTrue(all(trace.type == "bar" for trace in figures["fatal-share"].data))
+        self.assertTrue(all(trace.type == "bar" for trace in figures["development-mix"].data))
+        self.assertEqual(figures["unit-reporting"].data[0].type, "heatmap")
+        default = build_report(self.frame, Selection())
+        pd.testing.assert_frame_equal(default.fatal_share, report.fatal_share)
+        pd.testing.assert_frame_equal(default.development_mix, report.development_mix)
+        pd.testing.assert_frame_equal(default.unit_reporting, report.unit_reporting)
 
     def test_single_year_reports_explain_unavailable_time_comparisons(self):
         figures = report_figures(build_report(self.frame, replace(Selection(), years=(2024,))))
-        for key in ["changes", "lagged", "indexed-trend"]:
+        for key in ["changes", "lagged"]:
             with self.subTest(question=key):
                 self.assertFalse(figures[key].data)
                 self.assertTrue(figures[key].layout.annotations[0].text)
+        for key in ["fatal-share", "development-mix", "unit-reporting"]:
+            self.assertTrue(figures[key].data)
 
     def test_saved_selection_round_trip_and_tampered_values(self):
         selection = self.controls(mode="search", query="Brooklyn 2024 new buildings")
@@ -284,6 +338,11 @@ class DashboardDataTests(unittest.TestCase):
                 self.frame.drop(columns="filing_count"),
                 self.frame.drop(columns="net_new_units"),
                 self.frame.drop(columns="night_crash_count"),
+                self.frame.drop(columns="fatal_crash_count"),
+                self.frame.assign(fatal_crash_count=self.frame["crash_count"] + 1),
+                self.frame.assign(new_construction_filings=self.frame["filing_count"] + 1),
+                self.frame.assign(jobs_with_known_units=self.frame["unique_job_count"] + 1),
+                self.frame.assign(unique_job_count=np.nan),
                 self.frame.assign(net_new_units=np.inf),
                 pd.concat([self.frame, self.frame.iloc[:1]], ignore_index=True),
                 self.frame.assign(has_housing_data="unknown"),
@@ -334,6 +393,9 @@ class DashboardHTTPTests(unittest.TestCase):
         ]
         self.assertEqual([heading.split(" / ")[0] for heading in headings],
                          [f"RQ{n}" for n in range(1, 11)])
+        self.assertEqual(headings[2], "RQ3 / Fatal-crash share")
+        self.assertEqual(headings[6], "RQ7 / Development mix")
+        self.assertEqual(headings[7], "RQ8 / Unit-reporting gaps")
         graphs = [node["props"]["id"] for node in nodes if node["type"] == "Graph"]
         self.assertEqual(len(graphs), 12)
         self.assertEqual(len(graphs), len(set(graphs)))
@@ -406,6 +468,36 @@ class DashboardHTTPTests(unittest.TestCase):
 
 
 class DashboardNotebookTests(unittest.TestCase):
+    def test_replacement_notebooks_share_dashboard_logic_and_have_fresh_outputs(self):
+        root = Path(__file__).resolve().parents[1]
+        expected = {
+            "Member2_Transportation_SIRTA.ipynb": {"60278402": "fatal_share_figure"},
+            "Member4_Story_and_Final.ipynb": {
+                "60278402": "fatal_share_figure",
+                "24aff1bb": "development_mix_figure",
+                "0381bf69": "unit_reporting_figure",
+            },
+        }
+        sources = []
+        for name, cells in expected.items():
+            notebook = nbformat.read(root / "notebooks" / name, as_version=4)
+            nbformat.validate(notebook)
+            by_id = {cell.id: cell for cell in notebook.cells}
+            sources.append(by_id["60278402"].source)
+            for cell_id, function in cells.items():
+                with self.subTest(notebook=name, question=function):
+                    cell = by_id[cell_id]
+                    self.assertIn(function, cell.source)
+                    self.assertIn("build_report", cell.source)
+                    self.assertIsNotNone(cell.execution_count)
+                    self.assertFalse(any(o.output_type == "error" for o in cell.outputs))
+                    plot_outputs = [o["data"]["application/vnd.plotly.v1+json"] for o in cell.outputs
+                                    if "application/vnd.plotly.v1+json" in o.get("data", {})]
+                    self.assertEqual(len(plot_outputs), 1)
+                    self.assertTrue(plot_outputs[0]["data"])
+                    self.assertTrue(any("text/markdown" in o.get("data", {}) for o in cell.outputs))
+        self.assertEqual(sources[0], sources[1])
+
     def test_member5_notebook_has_two_executed_interactive_charts(self):
         path = Path(__file__).resolve().parents[1] / "notebooks" / "Member5_Website_Research.ipynb"
         notebook = nbformat.read(path, as_version=4)

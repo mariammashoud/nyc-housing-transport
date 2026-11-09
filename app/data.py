@@ -22,6 +22,7 @@ TRANSPORT_METRICS = {
     "fatalities_total": "Fatalities",
 }
 QUARTILES = ("Q1 / lowest", "Q2", "Q3", "Q4 / highest")
+CRASH_GROUPS = ("Other crash volume", "High crash volume")
 BENCHMARK_NOTE = (
     "Groups use each year's NYC-wide, housing-covered ZIPs, before your filters. "
     "High means a positive value at or above the 75th percentile; ties stay together, "
@@ -56,6 +57,9 @@ class Report:
     recurrence: pd.DataFrame
     coverage: dict
     crash_covered_zips: frozenset[str]
+    fatal_share: pd.DataFrame
+    development_mix: pd.DataFrame
+    unit_reporting: pd.DataFrame
 
 
 def load_dataset(path=DATA_PATH):
@@ -64,7 +68,7 @@ def load_dataset(path=DATA_PATH):
         "zip_code", "year", "borough", "has_housing_data", "has_crash_data",
         "zip_latitude", "zip_longitude", "official_zip_filings", "approximate_zip_filings",
         "net_new_units", "unique_job_count", "jobs_with_known_units",
-        "night_crash_count", "crashes_with_known_time",
+        "night_crash_count", "crashes_with_known_time", "fatal_crash_count",
         *HOUSING_METRICS, *TRANSPORT_METRICS,
     }
     missing = required - set(frame.columns)
@@ -83,7 +87,8 @@ def load_dataset(path=DATA_PATH):
         if not pd.api.types.is_bool_dtype(frame[flag]) or frame[flag].isna().any():
             raise ValueError(f"{flag} must contain explicit True/False values.")
     numeric = [*HOUSING_METRICS, *TRANSPORT_METRICS, "official_zip_filings", "approximate_zip_filings",
-               "unique_job_count", "jobs_with_known_units", "night_crash_count", "crashes_with_known_time"]
+               "unique_job_count", "jobs_with_known_units", "night_crash_count", "crashes_with_known_time",
+               "fatal_crash_count"]
     for column in numeric:
         if not pd.api.types.is_numeric_dtype(frame[column]):
             raise ValueError(f"{column} must be numeric.")
@@ -101,6 +106,14 @@ def load_dataset(path=DATA_PATH):
         raise ValueError("Housing-covered rows have unknown required filing counts.")
     if frame.loc[~known, list(HOUSING_METRICS)].notna().any().any():
         raise ValueError("Unknown housing coverage must remain missing, not zero.")
+    if frame.loc[known, ["unique_job_count", "jobs_with_known_units"]].isna().any().any():
+        raise ValueError("Housing-covered rows must have known job-reporting counts.")
+    if frame["jobs_with_known_units"].gt(frame["unique_job_count"]).any():
+        raise ValueError("Jobs with known units cannot exceed the first-observed job count.")
+    if frame["new_construction_filings"].gt(frame["filing_count"]).any():
+        raise ValueError("New-building filings cannot exceed all application filings.")
+    if frame["fatal_crash_count"].gt(frame["crash_count"]).any():
+        raise ValueError("Fatal crashes cannot exceed all recorded serious crashes.")
     if frame[list(TRANSPORT_METRICS)].isna().any().any():
         raise ValueError("Dashboard event counts must be known or documented structural zeros.")
     if frame.loc[~frame["has_crash_data"], list(TRANSPORT_METRICS)].ne(0).any().any():
@@ -239,7 +252,7 @@ def annual_benchmarks(frame, housing_metric, transport_metric):
     data = frame.copy()
     eligible = data["has_housing_data"]
     data["housing_quartile"] = pd.Series(pd.NA, index=data.index, dtype="string")
-    for flag in ["housing_high", "transport_high", "joint_high"]:
+    for flag in ["housing_high", "transport_high", "joint_high", "crash_high"]:
         data[flag] = pd.Series(pd.NA, index=data.index, dtype="boolean")
     for _, group in data.loc[eligible].groupby("year"):
         housing = group[housing_metric]
@@ -256,6 +269,8 @@ def annual_benchmarks(frame, housing_metric, transport_metric):
         data.loc[group.index, "housing_high"] = high_h
         data.loc[group.index, "transport_high"] = high_t
         data.loc[group.index, "joint_high"] = high_h & high_t
+        crashes = group["crash_count"]
+        data.loc[group.index, "crash_high"] = crashes.gt(0) & crashes.ge(crashes.quantile(.75))
     return data
 
 
@@ -287,6 +302,29 @@ def build_report(frame, selection):
     ).reset_index().sort_values(
         ["joint_years", "housing_total", "zip_code"], ascending=[False, False, True],
     )
+    fatal_share = known.loc[known["fatal_crash_count"].notna()].groupby("housing_quartile")[
+        ["fatal_crash_count", "crash_count"]
+    ].sum(min_count=1).reindex(QUARTILES)
+    fatal_share["fatal_crash_share"] = fatal_share["fatal_crash_count"].div(
+        fatal_share["crash_count"].replace(0, np.nan),
+    )
+    development_mix = known.assign(crash_group=known["crash_high"].map(
+        {False: CRASH_GROUPS[0], True: CRASH_GROUPS[1]},
+    )).groupby("crash_group")[["new_construction_filings", "filing_count"]].sum(
+        min_count=1,
+    ).reindex(CRASH_GROUPS)
+    development_mix["other_filings"] = development_mix["filing_count"] - development_mix["new_construction_filings"]
+    development_mix["new_building_share"] = development_mix["new_construction_filings"].div(
+        development_mix["filing_count"].replace(0, np.nan),
+    )
+    development_mix["other_filing_share"] = 1 - development_mix["new_building_share"]
+    unit_reporting = known.groupby(["borough", "year"])[
+        ["unique_job_count", "jobs_with_known_units"]
+    ].sum(min_count=1)
+    unit_reporting["jobs_missing_units"] = unit_reporting["unique_job_count"] - unit_reporting["jobs_with_known_units"]
+    unit_reporting["missing_unit_share"] = unit_reporting["jobs_missing_units"].div(
+        unit_reporting["unique_job_count"].replace(0, np.nan),
+    )
     located = rows["zip_latitude"].notna()
     coverage = {
         "rows": len(rows),
@@ -295,9 +333,14 @@ def build_report(frame, selection):
         "approximate_zip_filings": int(rows["approximate_zip_filings"].sum()),
         "missing_map_zips": sorted(rows.loc[~located, "zip_code"].unique().tolist()),
         "known_housing_rows": len(known),
+        "unknown_fatal_status_rows": int(known["fatal_crash_count"].isna().sum()),
     }
     crash_covered_zips = frozenset(frame.loc[frame["has_crash_data"], "zip_code"])
-    return Report(selection, rows, totals, concentration, recurrence, coverage, crash_covered_zips)
+    return Report(
+        selection=selection, rows=rows, totals=totals, concentration=concentration,
+        recurrence=recurrence, coverage=coverage, crash_covered_zips=crash_covered_zips,
+        fatal_share=fatal_share, development_mix=development_mix, unit_reporting=unit_reporting,
+    )
 
 
 def report_csv(report):

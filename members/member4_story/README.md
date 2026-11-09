@@ -6,8 +6,9 @@ Deliverable: [Member4_Story_and_Final.ipynb](../../notebooks/Member4_Story_and_F
 - Full preparation/integration pipeline consolidated in dependency order.
 - Descriptive markdown for each step, source links and original contribution credits.
 - All Members 1-3 research questions plus Member 4's own two questions/charts:
-  1. Borough shares of filings versus serious crashes.
-  2. Indexed trends in a consistently housing-covered ZIP panel (2022 = 100).
+  1. New-building versus other filing mix in high-crash and other ZIP-years (website RQ7).
+  2. Incomplete unit-reporting shares by borough and first-observed job year (website RQ8).
+- These replace the overlapping borough-share and indexed-trend comparisons. Both use shared dashboard calculations and have regenerated interactive charts, count tables and calculated findings. Percentages pool counts before division; zero denominators remain undefined.
 - Calculated findings and website-story handoff, limitations and responsible NYC relevance.
 - Explicit distinction between filings/reported job units and completed homes, and between correlation and causation.
 

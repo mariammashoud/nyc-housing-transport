@@ -106,16 +106,23 @@ The website shows all ten questions, with one interactive chart per question, in
 
 1. **RQ1 / Member 1:** reported net unit change by borough and first-observed job year (diverging heatmap).
 2. **RQ2 / Member 1:** housing activity and recorded transportation events by ZIP-year (scatter).
-3. **RQ3 / Member 2:** housing activity and people seriously injured (scatter).
+3. **RQ3 / Member 2:** percentage of recorded serious crashes that are fatal, by housing-activity group (bars).
 4. **RQ4 / Member 2:** nighttime crash share by borough and housing-activity group (weighted-share heatmap).
 5. **RQ5 / Member 3:** within-ZIP changes between the first and last selected years (scatter).
 6. **RQ6 / Member 3:** housing activity and following-year transportation events, pooled and within-ZIP views (two-panel scatter).
-7. **RQ7 / Member 4:** borough shares of housing and transportation activity (grouped bars).
-8. **RQ8 / Member 4:** indexed trends using a consistent, housing-covered ZIP panel (lines).
+7. **RQ7 / Member 4:** new-building versus other filing mix in high-crash and other ZIP-years (100% stacked bars).
+8. **RQ8 / Member 4:** incomplete housing-unit reports by borough and first-observed job year (percentage heatmap).
 9. **RQ9 / Member 5:** transportation concentration across annual housing-activity groups (grouped bars).
 10. **RQ10 / Member 5:** recurring jointly high activity, up to 20 ZIPs (heatmap).
 
-All questions follow the applied borough/year/ZIP scope. Measure dropdowns generalize the original filing/crash comparisons; RQ1 always uses reported units, and RQ3 always uses serious injuries. RQ4 uses the dashboard's fixed annual NYC activity groups rather than re-ranking pooled selected ZIP-years; it divides summed nighttime counts by summed known-time crash counts. RQ5 excludes ZIPs without housing at both selected endpoints. RQ5/RQ6 exclude ZIPs never present in the full snapshot's crash source. RQ6 only pairs exact consecutive years within the selection; RQ8 uses ZIPs with housing coverage in every selected year and indexes to the first selected year. Missing coverage, insufficient years and undefined denominators produce explicit chart notices, not fabricated zeros; all ten question headings remain visible.
+All questions follow the applied borough/year/ZIP scope. Measure dropdowns generalize the filing/crash comparisons; RQ1 uses reported units, RQ3 keeps its fatal/serious-crash outcome, RQ7 keeps its filing categories and serious-crash groups, and RQ8 keeps its job-reporting counts. RQ3 and RQ4 group by the selected housing measure using fixed annual NYC benchmarks rather than re-ranking selected ZIP-years. RQ4 divides summed nighttime counts by summed known-time crash counts. RQ5 excludes ZIPs without housing at both selected endpoints. RQ5/RQ6 exclude ZIPs never present in the full snapshot's crash source. RQ6 only pairs exact consecutive years within the selection. Missing coverage, insufficient years and undefined denominators produce explicit chart notices, not fabricated zeros; all ten question headings remain visible.
+
+The three replacements ask different things, not just differently worded count correlations:
+- **RQ3 / Event severity:** summed fatal-crash counts / summed serious-crash counts **within each housing group**. This uses crashes, not numbers of people killed; unknown fatal-crash status is excluded from both numerator and denominator. Unlike RQ9, this is not each group's share of all transportation events.
+- **RQ7 / Development composition:** summed new-building filings / summed application filings **within each crash-volume group**. High crash volume means a positive serious-crash count at/above the annual NYC-wide 75th percentile among housing-covered ZIPs, before filters; ties are retained. Other filings are the remainder, not necessarily renovations or residential work.
+- **RQ8 / Reporting quality:** first-observed jobs missing a complete existing/proposed unit pair / all first-observed jobs **within each borough-year cohort**. Partial unit reports are not zero units.
+
+These are ratios of pooled counts, not averages of ZIP percentages. Zero denominators remain undefined. The corresponding Member 2 and final consolidated notebook questions, calculations, charts and findings use the same shared report logic; the unchanged nighttime notebook question retains its documented pooled quartiles.
 
 Two supplementary context charts remain available: yearly totals on independent count axes, and a map of descriptive source-mean ZIP points. Map size encodes transportation and color encodes housing; gray marks unknown housing.
 
@@ -129,9 +136,9 @@ Coverage notices distinguish unknown housing, structural crash zeros and approxi
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
-Dashboard tests cover all ten question headings on initial, filtered, sparse and reset reports; all twelve chart containers; weighted nighttime denominators; endpoint/lag matching; consistent-panel indexing; filtering, search, exact percentile/tie handling, missingness, state isolation, all nine measure combinations, actual Dash HTTP callbacks, downloads and the two executed Member 5 notebook charts. Existing data-pipeline checks remain included.
+Dashboard tests cover all ten question headings on initial, filtered, sparse and reset reports; all twelve chart containers; exact fatal-crash, filing-mix, job-reporting and nighttime ratios; fixed crash groups; endpoint/lag matching; filtering, search, percentile/tie handling, missingness, state isolation, all nine measure combinations, actual Dash HTTP callbacks, downloads and the executed notebook charts. Existing data-pipeline checks remain included.
 
-Latest dashboard verification: **31 dashboard tests passed**. Desktop (1440px) and mobile (390px) page loads displayed all ten questions without horizontal overflow. Browser search and reset retained all ten question cards; callback tests also covered missing-data selections and CSV downloads. Explicit graph container heights prevent charts collapsing on mobile.
+Latest verification: **35 dashboard tests and 2 notebook regression tests passed**. The four changed research code cells were executed and their regenerated charts/findings saved in the two corresponding notebooks. Browser checks confirmed ten distinct question cards, all twelve charts, working filtered reports and no horizontal overflow on desktop (1440px) or mobile (390px) page loads. Explicit graph container heights prevent charts collapsing on mobile.
 
 ### Deploy on Render (account authorization required)
 **Status: configuration ready; no public deployment or live URL has been created.**

@@ -29,7 +29,7 @@
 Open http://127.0.0.1:8050/. Stop with `Ctrl+C`. Use Python 3.12; no raw downloads or notebook execution are required to run the web app.
 
 ## Research questions
-The website displays Members 1-4's eight questions first: reported job-cohort unit change, housing/transportation association, serious injuries, nighttime shares, within-ZIP endpoint changes, one-year-lag comparisons, borough shares and consistent-panel indexed trends. See the [complete question list and filtering rules](../../README.md#ten-research-questions).
+The website displays Members 1-4's eight questions first: reported job-cohort unit change, housing/transportation association, fatal-crash percentage, nighttime shares, within-ZIP endpoint changes, one-year-lag comparisons, development mix and unit-reporting gaps. The three replacements (RQ3/RQ7/RQ8) use distinct outcomes and denominators, with matching regenerated notebook questions and outputs. See the [complete question list and filtering rules](../../README.md#ten-research-questions).
 
 Member 5 adds:
 

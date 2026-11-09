@@ -107,7 +107,7 @@ def render_report(report, fingerprint):
                 html.Div([html.Span("THE TEAM'S RESEARCH", className="eyebrow"),
                           html.H2("10 research questions")]),
                 html.P("Members 1-5 / two questions each. All charts use the applied borough, year and ZIP scope. "
-                       "Measure dropdowns generalize the comparisons except reported units (RQ1) and serious injuries (RQ3)."),
+                       "Each question names its measures; fixed-outcome questions keep those measures when dropdowns change."),
             ], className="report-heading"),
             html.Div([
                 graph_card("RQ1 / Reported unit change",
@@ -123,11 +123,15 @@ def render_report(report, fingerprint):
                                      html.P("One point per ZIP-year. Defaults reproduce the filing/serious-crash question. "
                                             "Repeated ZIP-years are not independent; association is not causation.",
                                             className="chart-footnote")]),
-                graph_card("RQ3 / Serious injuries",
-                           "Across ZIP-years, how is housing activity associated with the number of people seriously injured in recorded crashes?",
-                           figures["severe-injuries"], "severe-injuries-chart",
-                           children=[html.P("The injury outcome stays fixed regardless of the transportation dropdown. "
-                                            "Counts describe recorded events, not individual risk.", className="chart-footnote")]),
+                graph_card("RQ3 / Fatal-crash share",
+                           "Does the percentage of fatal crashes differ across housing-activity groups?",
+                           figures["fatal-share"], "fatal-share-chart",
+                           children=[html.P("Sum of fatal crashes / sum of recorded serious crashes, not fatalities per crash "
+                                            "or an average of ZIP percentages. The outcome stays fixed regardless of the transportation dropdown. "
+                                            f"{coverage['unknown_fatal_status_rows']} housing-covered ZIP-year rows with unknown fatal-crash status "
+                                            "are excluded from both numerator and denominator. Zero-crash shares are undefined. "
+                                            "This is event severity, not individual risk. " + BENCHMARK_NOTE,
+                                            className="chart-footnote")]),
                 graph_card("RQ4 / Nighttime crashes",
                            "Does the observed nighttime crash share differ across housing-activity groups within each borough?",
                            figures["nighttime"], "nighttime-chart",
@@ -149,18 +153,23 @@ def render_report(report, fingerprint):
                                             "The second view subtracts each ZIP's own paired-year mean; a single pair gives zero deviations. "
                                             "These descriptive comparisons cannot establish causation.",
                                             className="chart-footnote")]),
-                graph_card("RQ7 / Borough shares",
-                           "Do the boroughs accounting for the most housing activity also account for the most recorded transportation activity?",
-                           figures["borough-shares"], "borough-shares-chart",
-                           children=[html.P("Each measure uses its own selected total. Unknown housing is excluded from that total, "
-                                            "not replaced with zero. Zero-total shares are undefined.",
+                graph_card("RQ7 / Development mix",
+                           "Do high-crash areas have a different mix of new-building versus other application filings?",
+                           figures["development-mix"], "development-mix-chart",
+                           children=[html.P("New-building filings / all application filings in each crash-volume group; "
+                                            "other filings are the remainder, not necessarily renovations or residential work. "
+                                            "High crash volume is positive and at/above the annual NYC-wide 75th percentile among housing-covered ZIPs, "
+                                            "computed before filters with ties retained. Both measures stay fixed regardless of the metric dropdowns. "
+                                            "Zero-filing shares remain undefined.",
                                             className="chart-footnote")]),
-                graph_card("RQ8 / Consistent-panel trends",
-                           "How have housing and transportation activity changed relative to the first selected year within a consistent ZIP panel?",
-                           figures["indexed-trend"], "indexed-trend-chart",
-                           children=[html.P("Only ZIPs with known housing in every selected year are included. "
-                                            "Both measures use the same ZIP panel; the first selected year equals 100. "
-                                            "Defaults reproduce the 2022 baseline.", className="chart-footnote")]),
+                graph_card("RQ8 / Unit-reporting gaps",
+                           "Where is reported housing-unit information most incomplete across boroughs and cohort years?",
+                           figures["unit-reporting"], "unit-reporting-chart",
+                           children=[html.P("First-observed jobs missing a complete existing/proposed unit pair / all first-observed jobs, "
+                                            "weighted by job counts rather than ZIP percentages. A zero-job cohort has no defined share. "
+                                            "Metric dropdowns do not change this reporting-quality question. "
+                                            "Missing reports limit unit-change conclusions; they are not zero units.",
+                                            className="chart-footnote")]),
                 graph_card("RQ9 / Concentration",
                            "How much of the selected transportation activity falls in the highest housing-activity group?",
                            figures["concentration"], "concentration-chart",

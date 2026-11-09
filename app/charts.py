@@ -1,6 +1,4 @@
 """Interactive figures for the team's ten research questions and dashboard context."""
-from dataclasses import replace
-
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -71,10 +69,20 @@ def net_units_figure(report):
     return style(figure, 410)
 
 
-def severe_injuries_figure(report):
-    return scatter_figure(replace(
-        report, selection=replace(report.selection, transport_metric="severe_injuries_total"),
+def fatal_share_figure(report):
+    summary = report.fatal_share
+    if summary["fatal_crash_share"].notna().sum() == 0:
+        return empty_figure("No recorded crashes with known fatal-crash status in housing-covered ZIPs.")
+    figure = go.Figure(go.Bar(
+        x=list(QUARTILES), y=summary["fatal_crash_share"] * 100, marker_color=ORANGE,
+        customdata=summary[["fatal_crash_count", "crash_count"]].to_numpy(),
+        hovertemplate="%{x}<br>Fatal crashes: %{customdata[0]:,.0f}<br>"
+                      "Recorded serious crashes: %{customdata[1]:,.0f}<br>"
+                      "Fatal-crash share: %{y:.1f}%<extra></extra>",
     ))
+    figure.update_xaxes(title_text=f"Annual NYC {HOUSING_METRICS[report.selection.housing_metric].lower()} groups")
+    figure.update_yaxes(title_text="Fatal crashes / recorded serious crashes (%)", rangemode="tozero")
+    return style(figure, 430)
 
 
 def nighttime_figure(report):
@@ -150,44 +158,46 @@ def lagged_figure(report):
     return style(figure, 680)
 
 
-def borough_shares_figure(report):
-    h, t = report.selection.housing_metric, report.selection.transport_metric
-    totals = report.rows.groupby("borough")[[h, t]].sum(min_count=1).reindex(report.selection.boroughs)
-    shares = totals.div(totals.sum(min_count=1).replace(0, np.nan)) * 100
-    if shares.notna().sum().sum() == 0:
-        return empty_figure("No positive event totals to calculate borough shares.")
+def development_mix_figure(report):
+    summary = report.development_mix
+    if summary["new_building_share"].notna().sum() == 0:
+        return empty_figure("No positive filing totals in housing-covered ZIPs to compare development mix.")
     figure = go.Figure()
-    for metric, label, color in [(h, HOUSING_METRICS[h], TEAL), (t, TRANSPORT_METRICS[t], ORANGE)]:
-        figure.add_bar(x=[b.title() for b in shares.index], y=shares[metric], name=label, marker_color=color)
-    figure.update_layout(barmode="group")
-    figure.update_yaxes(title_text="Share of selected activity (%)", range=[0, 105])
+    for share, count, label, color in [
+        ("new_building_share", "new_construction_filings", "New-building filings", TEAL),
+        ("other_filing_share", "other_filings", "Other application filings", "#b7c8ca"),
+    ]:
+        figure.add_bar(
+            x=summary.index, y=summary[share] * 100, name=label, marker_color=color,
+            customdata=summary[[count, "filing_count"]].to_numpy(),
+            hovertemplate="%{x}<br>%{fullData.name}: %{customdata[0]:,.0f}<br>"
+                          "All filings: %{customdata[1]:,.0f}<br>Share: %{y:.1f}%<extra></extra>",
+        )
+    figure.update_layout(barmode="stack")
+    figure.update_xaxes(title_text="Annual NYC serious-crash volume group")
+    figure.update_yaxes(title_text="Share of application filings (%)", range=[0, 100])
     return style(figure, 430)
 
 
-def indexed_trend_figure(report):
+def unit_reporting_figure(report):
+    summary = report.unit_reporting
+    if summary["missing_unit_share"].notna().sum() == 0:
+        return empty_figure("No first-observed jobs with known reporting counts in this selection.")
     years = sorted(report.selection.years)
-    if len(years) < 2:
-        return empty_figure("Select at least two years for an indexed trend comparison.")
-    h, t = report.selection.housing_metric, report.selection.transport_metric
-    coverage = report.rows.groupby("zip_code").agg(
-        years=("year", "nunique"), housing_years=("has_housing_data", "sum"),
-    )
-    zips = coverage.index[coverage["years"].eq(len(years)) & coverage["housing_years"].eq(len(years))]
-    panel = report.rows[report.rows["zip_code"].isin(zips)]
-    if panel.empty:
-        return empty_figure("No consistently housing-covered ZIPs across all selected years.")
-    annual = panel.groupby("year")[[h, t]].sum(min_count=1).reindex(years)
-    baseline = annual.loc[years[0]]
-    if baseline.isna().any() or baseline.le(0).any():
-        return empty_figure("Both measures need a positive first-year baseline for an indexed comparison.")
-    indexed = annual.div(baseline) * 100
-    figure = go.Figure()
-    for metric, label, color in [(h, HOUSING_METRICS[h], TEAL), (t, TRANSPORT_METRICS[t], ORANGE)]:
-        figure.add_scatter(x=years, y=indexed[metric], mode="lines+markers", name=label, line={"color": color})
-    figure.add_hline(y=100, line_dash="dash", line_color="#89949d")
-    figure.update_layout(title={"text": f"Consistent panel: {len(zips)} ZIPs", "font": {"size": 14}})
-    figure.update_xaxes(title_text="Year", tickvals=years)
-    figure.update_yaxes(title_text=f"Index ({years[0]} = 100)")
+    matrix = summary["missing_unit_share"].unstack().reindex(
+        index=report.selection.boroughs, columns=years,
+    ) * 100
+    missing = summary["jobs_missing_units"].unstack().reindex(index=matrix.index, columns=years)
+    total = summary["unique_job_count"].unstack().reindex(index=matrix.index, columns=years)
+    figure = go.Figure(go.Heatmap(
+        x=[str(y) for y in years], y=[b.title() for b in matrix.index], z=matrix.to_numpy(),
+        customdata=np.stack([missing.to_numpy(), total.to_numpy()], axis=-1),
+        colorscale="Oranges", zmin=0, zmax=100, colorbar={"title": "Incomplete<br>unit pairs (%)"},
+        hovertemplate="%{y}<br>Cohort year %{x}<br>Jobs missing a complete unit pair: %{customdata[0]:,.0f}<br>"
+                      "First-observed jobs: %{customdata[1]:,.0f}<br>Incomplete share: %{z:.1f}%<extra></extra>",
+    ))
+    figure.update_xaxes(type="category", title_text="First-observed job year")
+    figure.update_yaxes(title_text="Borough")
     return style(figure, 430)
 
 
@@ -293,10 +303,10 @@ def map_figure(report):
 
 def report_figures(report):
     return {
-        "net-units": net_units_figure(report), "severe-injuries": severe_injuries_figure(report),
+        "net-units": net_units_figure(report), "fatal-share": fatal_share_figure(report),
         "nighttime": nighttime_figure(report), "changes": changes_figure(report),
-        "lagged": lagged_figure(report), "borough-shares": borough_shares_figure(report),
-        "indexed-trend": indexed_trend_figure(report),
+        "lagged": lagged_figure(report), "development-mix": development_mix_figure(report),
+        "unit-reporting": unit_reporting_figure(report),
         "relationship": scatter_figure(report), "concentration": concentration_figure(report),
         "trend": trend_figure(report), "recurrence": recurrence_figure(report),
         "map": map_figure(report),

@@ -82,6 +82,14 @@ Derived columns:
 
 All source count/unit totals must reconcile through the merge. Ratios must never be infinite. Nullable counts remain blank where coverage is unknown.
 
+### Distinct dashboard/notebook research summaries
+These are read-only calculations from the integrated dataset; they do not change its export:
+- **RQ3 / Fatal-crash share:** sum `fatal_crash_count` / sum `crash_count` within each annual housing-activity group, using housing-covered rows with known fatal-crash counts. Exclude unknown fatal-crash status from both sides of the ratio. Fatal crashes count events, not people killed.
+- **RQ7 / Development mix:** sum `new_construction_filings` / sum `filing_count` for high-crash versus other housing-covered ZIP-years. High crash volume uses each year's full-city positive serious-crash counts at/above the 75th percentile before user filters, with ties retained. These fixed crash groups do not change when a different transportation measure is selected. Other filings equal total filings minus new-building filings; no residential/renovation meaning is inferred.
+- **RQ8 / Unit-reporting gaps:** sum (`unique_job_count` - `jobs_with_known_units`) / sum `unique_job_count` within each borough/year cohort. This describes incomplete reporting, not missing units as zeros.
+
+Use ratios of pooled counts, never averages of ZIP percentages. Zero denominators remain missing, including zero-job cohorts. Unknown housing is excluded, not replaced with zero. Validate that fatal-crash counts do not exceed serious-crash counts, new-building filings do not exceed all filings, and known-unit jobs do not exceed first-observed jobs.
+
 ## Reproduction and final notebook
 Run `python notebooks/run_notebooks.py` from the repository root, then `python -m unittest discover -s tests -v`.
 

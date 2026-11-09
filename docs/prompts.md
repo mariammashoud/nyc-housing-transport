@@ -4,6 +4,7 @@ Every prompt used in the project (AI or otherwise) is listed here, per member, w
 
 ## Website follow-up
 - "there should be 10 research questions appears" - display the eight Members 1-4 questions alongside Member 5's two, numbered RQ1-RQ10, with applied-selection charts and regression tests.
+- "there are reppative questions want them diffrinant" - user approved replacing RQ3 with fatal-crash percentage, RQ7 with development mix and RQ8 with unit-reporting completeness, including corresponding notebook questions and regenerated outputs. Retain the other seven questions and ten total; share calculations between notebooks and dashboard and test exact denominators.
 
 ## Member 2 - Transportation dataset (SIRTA, T4)
 An AI assistant (Claude) was used to help write and debug the code in this section; the results were run and reviewed by the author.
