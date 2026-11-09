@@ -18,6 +18,8 @@ For missing/invalid postcode only, use the existing nearest-SIRTA-crash method w
 
 **Measurements:** missing units/heights/costs are not zero. Quarantine impossible measures without deleting otherwise usable filings. Units must be non-negative integers; values above 10,000 are conservatively quarantined as suspicious, not replaced with guessed corrections. Keep plausible outliers and flag them using IQR on `log1p` cost, proposed units and floor area, preserving the team's log-scale refinement.
 
+Member 1 also displays review-only domain flags and sensitivity scenarios for construction area per net added unit, large low-rise unit reports and high small-house costs. These unvalidated thresholds operate on copies only: they do not change the export policy, baseline measures, outlier flags or research-chart inputs. Sensitivity totals use the same job-cohort accounting below.
+
 ## `data/clean/housing_clean.csv`
 Produced by [Member 1's notebook](../notebooks/Member1_Housing.ipynb).
 

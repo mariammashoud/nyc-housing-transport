@@ -87,3 +87,8 @@ Implementation supported by those requests:
 - Latest teammate changes corrected Member 1's name to Mostafa, refined housing outlier flags using log-scale IQR, removed integrated-file overwriting, updated source TLS handling, and recorded additional original-development prompts.
 - Preserved Mostafa's name and prompt history and incorporated log-scale IQR. Retained the validated operating-system TLS solution and sole Member 3 integrated export.
 - Regenerated outputs with the reconciled flag calculation. The current documented window-cohort unit accounting and measure quarantine differ from the teammate's earlier initial-filing-only/whole-row-removal approach; the original prompt history is retained for transparent review.
+
+## Member 1 EDA enhancement
+- "Without altering the code yet compare the current implementation of Member1's notebook to the proposed member1 final notebook. Which one has a better implementation and EDA." - compared source, outputs, data definitions and read-only execution.
+- "implement your recomendation in a new branch" - retain the tested export policy, adopt richer EDA and reporting-coverage charts, and expose proposed plausibility exclusions as non-mutating sensitivity scenarios rather than new cleaning rules.
+- Correct missing-value domain counts, avoid arbitrary tie-breaking in unit-change groups, show group sample sizes, and omit independent-observation confidence bands for repeated ZIP-years. Regenerate and validate the notebook without changing the existing housing exports.

@@ -17,7 +17,7 @@ def filing(identifier="M00000001-I1", **changes):
     row = {
         "job_filing_number": identifier, "filing_date": "2022-01-01",
         "current_status_date": "2022-02-01", "borough": "Manhattan",
-        "postcode": "10001", "zip": "90210", "job_type": "Alteration",
+        "postcode": "10001", "zip": "90210", "job_type": "Alteration", "building_type": "Other",
         "filing_status": "Permit Issued", "initial_cost": 1000,
         "total_construction_floor_area": 100, "existing_stories": 3,
         "existing_height": 30, "existing_dwelling_units": 4,
