@@ -1,22 +1,19 @@
-# Member 3 - Data integration
+# Member 3 - Data integration - Aya Sweed
 
-## Inputs
-- `data/clean/transport_clean.csv` (ready)
-- `data/clean/housing_clean.csv` (from Member 1, due Sunday noon)
+Deliverable: [Member3_Integration.ipynb](../../notebooks/Member3_Integration.ipynb).
 
-## Output files
-- `notebooks/Member3_Integration.ipynb`
-- `data/clean/integrated_dataset.csv`
+## Implemented
+- ZIP x year join justification and alternatives.
+- Key validation and outer merge with coverage visualization.
+- Explicit borough-conflict checks, redundant-column cleanup and descriptive ZIP map points.
+- Structural crash zeros distinguished from unknown housing/source measurements; source flags retained.
+- Corrected job-unit columns and nighttime numerator/denominator carried through.
+- Calendar-keyed year-over-year/next-year measures; undefined ratios remain missing.
+- Dynamic key-union checks and source-total reconciliation, not hard-coded snapshot counts.
+- Two research questions/charts with calculated findings and cautions about repeated ZIP-years.
+- **Sole producer of `integrated_dataset.csv`.**
 
-## Checklist
-- [ ] Explain the join: key `zip_code` + `year`, why this granularity, why not record-level, alternatives considered (borough x year, spatial join)
-- [ ] Check keys first: both `zip_code` are 5-digit strings, both `year` are integers, the pair is unique in each file
-- [ ] Merge (outer recommended); report how many ZIP-years matched / only housing / only transport (chart)
-- [ ] **Post-integration cleaning (required):** new missing values from the join (crash 0 / filing 0 + flags), inconsistent `borough`, redundant or duplicated columns, data type mismatches
-- [ ] Derived columns (e.g. severe injuries per 1,000 new units, next-year crashes)
-- [ ] Validation: row counts before/after, no duplicate keys, summary of the final columns
-- [ ] Upload `integrated_dataset.csv` and **announce it in the group** (Members 1, 2, 4, 5 are waiting for it)
-- [ ] 2 research questions + 2 visualizations
-- [ ] Prompts + contribution line
+## Team review
+Review regenerated correlations before submission. They are descriptive, not causal; simple exploratory p-values do not account for spatial dependence or clustered repeated observations.
 
-**Deadline:** `integrated_dataset.csv` by **Sunday afternoon**. Start now with a sample of housing data.
+See the [data contract](../../docs/data_contract.md) and [prompt log](../../docs/prompts.md).

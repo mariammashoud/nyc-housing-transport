@@ -3,8 +3,12 @@ numpy
 matplotlib
 seaborn
 scikit-learn
+scipy
 plotly
 dash
 gunicorn
 jupyter
 ipykernel
+nbclient
+nbformat
+truststore

@@ -1,13 +1,16 @@
-# Member 2 - Transportation dataset (T4: SIRTA) - Mariam
+# Member 2 - Transportation (T4/SIRTA) - Mariam
 
-## Status
-- [x] Dataset overview, EDA, pre-integration cleaning, validation
-- [x] `transport_clean.csv` (703 rows, ZIP x year, 2022-2025) and `transport_clean_row_level.csv` (10,561 crashes)
-- [x] Notebook executed on the real data: `notebooks/Member2_Transportation_SIRTA.ipynb`
+Deliverable: [Member2_Transportation_SIRTA.ipynb](../../notebooks/Member2_Transportation_SIRTA.ipynb).
 
-## Still to do
-- [ ] Add the housing dataset link in section 8 of the notebook
-- [ ] After `integrated_dataset.csv` exists: rename `HOUSING_METRIC` in section 7 and run it -> **2 research questions + 2 visualizations**
-- [ ] Write the findings under each chart (direction, strength, limits)
-- [ ] Prompts in `docs/prompts.md`, contribution line in the README table
-- [ ] Help Member 1 keep the same structure and column format
+## Implemented
+- Full 2022-2025 download with explicit cache and source-count validation.
+- EDA, documented cleaning, missing-ZIP recovery, outlier flags and validation.
+- Shared output paths under `data/clean/`, independent of notebook working directory.
+- Nighttime share excludes unknown times; export numerator/denominator for proper weighting.
+- Two completed cross-domain questions: filings versus severe injuries; nighttime share by filing-volume group and borough.
+- Actual shared dataset path/columns, calculated chart interpretations, housing source link and limitations.
+
+## Team review
+Review regenerated findings before submission. SIRTA covers serious/fatal crashes, not all collisions; ZIP recovery is approximate and no population/traffic risk denominator is available.
+
+See the [data contract](../../docs/data_contract.md) and [prompt log](../../docs/prompts.md).
