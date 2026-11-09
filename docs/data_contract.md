@@ -80,7 +80,7 @@ Derived columns:
 
 All source count/unit totals must reconcile through the merge. Ratios must never be infinite. Nullable counts remain blank where coverage is unknown.
 
-## Reproduction and next handoff
+## Reproduction and final notebook
 Run `python notebooks/run_notebooks.py` from the repository root, then `python -m unittest discover -s tests -v`.
 
-Member 4's final consolidated notebook and two additional research questions are delivered on the stacked `fix/member-4` branch. Member 5 website/deployment is intentionally deferred.
+[Member 4's final notebook](../notebooks/Member4_Story_and_Final.ipynb) consolidates the full preparation/integration pipeline, all Members 1-4 research questions, and Member 4's two additional charts and synthesis. It runs top to bottom. Member 5 website/deployment is intentionally deferred.

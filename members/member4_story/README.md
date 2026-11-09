@@ -1,20 +1,17 @@
 # Member 4 - Analysis, storytelling and final notebook
 
-## Inputs
-All members' notebooks and `integrated_dataset.csv`.
+Deliverable: [Member4_Story_and_Final.ipynb](../../notebooks/Member4_Story_and_Final.ipynb).
 
-## Output files
-- `notebooks/Member4_Story_and_Final.ipynb` (final merged notebook)
-- The "story" text for the website (question, key findings, limits, impact)
+## Implemented
+- Full preparation/integration pipeline consolidated in dependency order.
+- Descriptive markdown for each step, source links and original contribution credits.
+- All Members 1-3 research questions plus Member 4's own two questions/charts:
+  1. Borough shares of filings versus serious crashes.
+  2. Indexed trends in a consistently housing-covered ZIP panel (2022 = 100).
+- Calculated findings and website-story handoff, limitations and responsible NYC relevance.
+- Explicit distinction between filings/reported job units and completed homes, and between correlation and causation.
 
-## Checklist
-- [ ] Draft the story structure now: the question and why it matters to New Yorkers
-- [ ] Review every research question: not simple counts, supported by exactly one chart, no causation claims
-- [ ] Review every visualization: correct chart type, title, axis labels, units, readable
-- [ ] Key findings (what surprised us), limitations (SIRTA = serious crashes only, ZIP is coarse, missing ZIPs dropped, 2026 excluded, correlation is not causation), impact (who can use it and what they should do)
-- [ ] Final notebook: dataset overview, EDA, pre-integration cleaning, integration, post-integration cleaning, visualizations, every step has a markdown cell
-- [ ] Prompts section complete (all members) and dataset links
-- [ ] 2 research questions + 2 visualizations
-- [ ] Check README contributions and the submission email details
+## Team review
+The notebook was assembled with AI assistance at the user's request; this does not imply the original contributors have approved its changes. Review findings, chart wording and contribution names before submission.
 
-**Deadline:** notebook assembled Monday morning (draft earlier).
+Member 5's website/deployment remains intentionally deferred. The findings and limitations sections are ready to adapt for that website; do not present incomplete housing coverage as zero.

@@ -162,10 +162,10 @@ class ExportTests(unittest.TestCase):
 
 
 class NotebookTests(unittest.TestCase):
-    def test_all_member_notebooks_executed_without_errors(self):
+    def test_all_four_notebooks_executed_without_errors(self):
         names = [
             "Member1_Housing.ipynb", "Member2_Transportation_SIRTA.ipynb",
-            "Member3_Integration.ipynb",
+            "Member3_Integration.ipynb", "Member4_Story_and_Final.ipynb",
         ]
         for name in names:
             with self.subTest(notebook=name):
