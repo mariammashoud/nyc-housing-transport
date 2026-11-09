@@ -52,18 +52,44 @@ An AI assistant (Claude) was used to help write and debug the code in this secti
 - Check Pierre's correction PRs and finish my integration fixes now that Member 1's work is merged: update the notebook text to the regenerated data, remove the old provisional wording, and keep ZIP codes that never appear in the crash file out of the research questions. (checked against the live API that H5 does have a building postcode; replaced stale hard-coded counts and placeholder markdown; 37 mostly single-building ZIPs excluded from the RQs only; RQ1 r = -0.07 over 183 ZIPs; RQ2 between-ZIP rho = 0.61, within-ZIP r = 0.06; integrated CSV unchanged; synced the same cells into the Member 4 notebook)
 
 ## Member 4 - Analysis, storytelling, final notebook
-The final notebook was assembled with AI assistance during the correction pass below. Individual Member 4 approval/name must still be confirmed.
+**Scope:** consolidate the analytical workflow, develop cross-domain research questions, and communicate findings responsibly.
+
+**Attribution:** the final notebook was assembled with AI assistance during the cross-member correction pass documented below. The briefs below professionally restate that documented scope; they are not verbatim historical prompts or evidence of separate Member 4 authorization. Individual Member 4 approval and contribution name remain unconfirmed.
+
+### Professional prompt briefs
+1. **Consolidate the reproducible workflow.** Assemble a final Jupyter notebook that runs from top to bottom and presents data acquisition, source-specific cleaning, ZIP-year aggregation, integration, and analysis in dependency order. Reuse the established helpers and data contract, retain source links and original contribution credits, and preserve Member 3's ownership of the integrated CSV.
+
+2. **Compare borough-level activity and crash shares.** Examine how each borough's share of housing application filings compares with its share of recorded serious crashes. Produce a clearly labelled comparison chart, calculate findings from the current data, and explain why differences in these shares do not establish individual risk or a causal construction effect.
+
+3. **Evaluate comparable trends over time.** Compare indexed housing-filing and serious-crash trends over 2022-2025 using a consistently housing-covered ZIP panel and a 2022 baseline of 100. Explain the panel-selection rule and excluded coverage, preserve unknown values, and interpret the indexed series as relative change rather than equivalent event volumes.
+
+4. **Develop an evidence-based narrative.** Synthesize the research findings into a coherent account of housing application activity and street safety in NYC. Distinguish application filings and reported job-cohort units from completed homes, and SIRTA serious-crash records from all collisions. Discuss missing unit reports, approximate ZIP assignment, exposure differences, and the limits of observational associations.
+
+5. **Validate and prepare the website handoff.** Execute the consolidated notebook, confirm key uniqueness and reconciliation of source totals, and replace stale or hard-coded findings with calculated interpretations. Prepare concise findings, limitations, and responsible NYC relevance statements for Member 5's dashboard without implying that original contributors have approved the correction pass.
+
+**Documented outcome:** the final notebook consolidates the preparation and integration pipeline, includes Members 1-3's research questions and Member 4's two additional analyses, and provides a findings-and-limitations handoff for the website. Contributor review remains required before submission.
 
 ## Member 5 - Website and deployment
-An AI assistant using Copilot SDK in VS Code assisted with implementation after the user approved the scope. Original team members should review the result before submission.
+**Scope:** implement an interactive, coverage-aware dashboard, two additional research analyses, and deployment preparation.
 
-- "now i want to start impleminting my part but tell me what you will exactly do before you begain" - supplied a plan covering Dash controls/search, Generate Report, five chart types, two additional research questions, CSV download, tests and Render preparation.
-- "what stack will you use" - selected Python, Dash, Plotly, Pandas, CSS, unittest and Gunicorn/Render; no database or separate JavaScript application.
-- "will you use colab ?" - clarified local VS Code/Jupyter development, optional Colab for notebooks, and Render for hosting.
-- "will you deploy it or i need to do thing" - clarified that account authorization, plan/billing approval and public deployment require the user; no passwords/tokens should be shared.
-- "ok start in a new branch starting from the last branch" - created `feat/member-5-dashboard` from `fix/member-4` and implemented the approved local work. No automatic commit, push or public deployment.
+**Attribution:** an AI assistant using Copilot SDK in VS Code assisted after the user approved the implementation scope. The briefs below are professionally edited summaries of the recorded planning, technology, environment, deployment, and branch requests and their approved implementation scope; they are not verbatim quotations or additional authorization. Original team members should review the result before submission.
 
-Implementation: strict validated search, explicit applied-report state, four dropdowns, five Plotly chart types, coverage-aware totals/story, per-session CSV download, responsive CSS, shared annual benchmark calculations, two executed research charts, regression/HTTP tests, minimal web requirements and Render configuration. Search/filter errors remain visible; unknown housing and zero denominators are not disguised as zero. Benchmark ties and map omissions are disclosed. Public deployment/second-device live checks remain pending authorization.
+### Professional prompt briefs
+1. **Define the implementation plan before development.** Review the integrated dataset and Member 4's analytical handoff, then propose the dashboard structure, supported filters, five chart types, CSV export, two additional research questions, validation strategy, and deployment prerequisites. Explain the deliverables and implementation sequence before making changes.
+
+2. **Select and explain the development stack.** Use Python, Dash, Plotly, Pandas, CSS, and unittest, with Gunicorn and Render for the proposed production setup. Explain the role of each component and why a database or separate JavaScript application is unnecessary for this CSV-backed project. Use local VS Code/Jupyter development, distinguish optional Colab notebook use from web hosting, and provide reproducible setup instructions.
+
+3. **Implement consistent report interactions.** Provide borough, year, housing-measure, and transportation-measure dropdowns alongside validated search. Apply changes only when Generate Report is selected, keep charts, summary cards, findings, and downloads aligned with the last applied selection, and provide clear pending-selection, reset, and invalid-input feedback. Keep report state isolated between user sessions.
+
+4. **Present accessible, coverage-aware visualizations.** Implement scatter, grouped-bar, aligned-line, heatmap, and map views with informative labels, hover details, zoom, and PNG export. Support responsive layouts and keyboard interaction. Read the integrated CSV without modifying it; preserve unknown housing values and undefined ratios, disclose missing map coordinates, and retain those records in non-map outputs and downloads.
+
+5. **Develop two reproducible cross-domain analyses.** Examine the share of recorded serious crashes associated with high-filing ZIP-years and identify ZIPs repeatedly meeting both high-filing and high-crash thresholds. Share calculations between the dashboard and research notebook. Define high activity as positive values at or above the annual NYC-wide 75th percentile before user filters, retain ties, and define recurrence as joint high activity in at least two selected years. Report coverage and interpret co-occurrence without causal claims.
+
+6. **Validate the application and document its boundaries.** Test filtering, search validation, applied-report state, exact benchmark thresholds, missingness, session isolation, HTTP callbacks, and CSV downloads. Execute the research notebook and verify that findings use the same calculations as the dashboard. Document data limitations, dependency requirements, startup instructions, and the distinction between local verification and production verification.
+
+7. **Prepare deployment within the approved scope.** Implement the approved local work on the requested branch derived from the previous branch; the recorded implementation used `feat/member-5-dashboard` based on `fix/member-4`. Prepare the Render configuration and deployment guide, but do not treat preparation as a completed public deployment. Obtain explicit authorization for account access, billing decisions, publishing, and any commit or push not separately requested; never request passwords or place credentials in code or prompts.
+
+**Documented outcome:** the approved local implementation includes validated search, applied-report state, four dropdowns, five Plotly chart types, coverage-aware summaries, per-session CSV export, responsive styling, shared annual benchmarks, two executed research charts, regression and HTTP tests, minimal web dependencies, and Render configuration. Search and filter errors remain visible; unknown housing and undefined ratios are not represented as zero. Benchmark ties and map omissions are disclosed. No automatic commit, push, or public deployment was included in the original implementation request. Public deployment and second-device live checks remain pending authorization.
 
 ## Cross-member correction pass requested by Member 5
 An AI assistant using Copilot SDK in VS Code assisted with this work. The original contributors should review the changes before submission. No claim is made that they authored or approved this correction pass.
@@ -87,3 +113,8 @@ Implementation supported by those requests:
 - Latest teammate changes corrected Member 1's name to Mostafa, refined housing outlier flags using log-scale IQR, removed integrated-file overwriting, updated source TLS handling, and recorded additional original-development prompts.
 - Preserved Mostafa's name and prompt history and incorporated log-scale IQR. Retained the validated operating-system TLS solution and sole Member 3 integrated export.
 - Regenerated outputs with the reconciled flag calculation. The current documented window-cohort unit accounting and measure quarantine differ from the teammate's earlier initial-filing-only/whole-row-removal approach; the original prompt history is retained for transparent review.
+
+## Member 1 EDA enhancement
+- "Without altering the code yet compare the current implementation of Member1's notebook to the proposed member1 final notebook. Which one has a better implementation and EDA." - compared source, outputs, data definitions and read-only execution.
+- "implement your recomendation in a new branch" - retain the tested export policy, adopt richer EDA and reporting-coverage charts, and expose proposed plausibility exclusions as non-mutating sensitivity scenarios rather than new cleaning rules.
+- Correct missing-value domain counts, avoid arbitrary tie-breaking in unit-change groups, show group sample sizes, and omit independent-observation confidence bands for repeated ZIP-years. Regenerate and validate the notebook without changing the existing housing exports.
