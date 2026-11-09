@@ -10,7 +10,18 @@ An AI assistant (Claude) was used to help write and debug the code in this secti
 - Build the notebook for the T4 dataset covering all project requirements: dataset overview, EDA, pre-integration cleaning (missing values, duplicates, inconsistencies, formats, outliers), validation, ZIP x year aggregation, and 2 research questions.
 - Fix this error from the API download: `KeyError: No column contains ('collision',)`.
 
-## Member 1 - Housing dataset (DOB NOW: Build – Job Application Filings, H5)
+## Member 1 - Housing dataset
+Original housing notebook prompt summaries (historical; implementation/claims have since been corrected):
+- Construct a Socrata SoQL query for `w9ak-ipjd.csv` filtering 2022-2025 and selecting building, unit, cost, coordinate and sparse energy columns.
+- Audit the owner `zip` against borough and integrate `assign_building_zip` using Member 2's row-level crashes.
+- Design an outlier strategy that removes impossible entry errors while retaining plausible high-rise developments.
+- Propose two cross-domain questions and visualizations joining the housing and transportation aggregates.
+
+The correction work below was requested by Member 5; do not attribute new prompts or approval to Member 1.
+
+The following teammate-supplied log describes the earlier implementation and its snapshot, not the current corrected methodology or regenerated results. Its log-scale IQR improvement is retained; official-postcode priority, measure quarantine and window-cohort accounting follow the current data contract.
+
+### Member 1's additional original-development log from the latest team update (DOB NOW: Build – Job Application Filings, H5)
 An AI assistant was used to help write, debug, and refine the code and analysis in this section; all outputs were executed and verified by the author.
 
 - Compare the candidate housing datasets (H1–H5) and justify why DOB NOW: Build – Job Application Filings (H5, `w9ak-ipjd`) best fits our study. (selected H5 because it records citywide construction filings with coordinates, costs, and existing vs. proposed dwelling units)
@@ -40,7 +51,30 @@ An AI assistant (Claude) was used to help write and debug the code in this secti
 - Review my prompt log, add a prompts section to the notebook, and draft my 2-3 line contribution entry for the README. (checked the wording and added my name)
 
 ## Member 4 - Analysis, storytelling, final notebook
-_(add prompts here)_
+Member 4's assembly and its prompt documentation follow on the stacked `fix/member-4` branch.
 
 ## Member 5 - Website and deployment
 _(add prompts here)_
+
+## Cross-member correction pass requested by Member 5
+An AI assistant using Copilot SDK in VS Code assisted with this work. The original contributors should review the changes before submission. No claim is made that they authored or approved this correction pass.
+
+- "review what members have been finished their part and tell me what to do i am member 5" - inspected saved notebooks, data schemas, coverage and incomplete placeholders.
+- "can you fix every member part then tell me what you exactly did as i dont understand anything" - requested completion and a plain-language explanation.
+- Scope clarification: **"Fix Members 1-4 only; leave my website for later."**
+- Housing methodology clarification: **"Use official building ZIPs, with flagged coordinate fallback when missing (recommended)."**
+
+Implementation supported by those requests:
+- Verified live source schemas; corrected the earlier claim that H5 lacks building postcode/job type; retained owner-ZIP exclusion.
+- Corrected job-unit duplication, missing-as-zero assumptions, implausible unit handling, source download failures and integrated-file overwrite.
+- Replaced Member 2's research placeholders, fixed shared paths and nighttime denominators, and calculated actual interpretations.
+- Regenerated integration with dynamic key/total checks and honest exploratory interpretation; no causal claims or independent-observation inference from repeated ZIP-years.
+- Member 4's final pipeline, two questions/charts and story handoff are delivered separately on the stacked branch.
+- Added regression tests and an ordered notebook runner; updated related documentation. Website/deployment intentionally left untouched.
+
+
+## Reconciliation before publishing branches
+- The user requested stacked branches for Members 1-3 and Member 4, and approved reconciling newer remote changes before pushing.
+- Latest teammate changes corrected Member 1's name to Mostafa, refined housing outlier flags using log-scale IQR, removed integrated-file overwriting, updated source TLS handling, and recorded additional original-development prompts.
+- Preserved Mostafa's name and prompt history and incorporated log-scale IQR. Retained the validated operating-system TLS solution and sole Member 3 integrated export.
+- Regenerated outputs with the reconciled flag calculation. The current documented window-cohort unit accounting and measure quarantine differ from the teammate's earlier initial-filing-only/whole-row-removal approach; the original prompt history is retained for transparent review.
